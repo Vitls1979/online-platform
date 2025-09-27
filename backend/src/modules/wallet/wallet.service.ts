@@ -27,7 +27,7 @@ export interface CreateTransactionInput {
   currency: string;
   type: TransactionType;
   metadata?: Record<string, unknown>;
-  sourceTransactionId?: string;
+  sourceTransactionId?: string | null;
 }
 
 @Injectable()
@@ -81,7 +81,7 @@ export class WalletService {
       amount: normalizedAmount,
       status: TransactionStatus.PENDING,
       externalId: intent.id,
-      sourceTransactionId: input.sourceTransactionId,
+      sourceTransactionId: input.sourceTransactionId ?? null,
     });
 
     await this.transactionRepository.save(transaction);

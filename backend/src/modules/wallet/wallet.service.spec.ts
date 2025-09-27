@@ -15,8 +15,12 @@ describe('WalletService', () => {
 
   beforeEach(() => {
     transactionRepositoryMock = {
-      create: jest.fn(),
-      save: jest.fn(),
+      create: jest.fn((transaction: Partial<Transaction>) => ({
+        ...transaction,
+      })),
+      save: jest.fn(async (transaction: Partial<Transaction>) => ({
+        ...transaction,
+      })),
     };
 
     paymentGatewayMock = {
@@ -41,14 +45,10 @@ describe('WalletService', () => {
       sourceTransactionId: 'src-123',
     };
 
-    const createdTransaction: Partial<Transaction> = {};
-
     paymentGatewayMock.createDepositIntent.mockResolvedValue({
       id: 'intent-1',
       redirectUrl: 'https://example.com/redirect',
     });
-    transactionRepositoryMock.create.mockReturnValue(createdTransaction);
-    transactionRepositoryMock.save.mockResolvedValue(createdTransaction);
 
     await service.createDepositIntent(input);
 
@@ -68,6 +68,13 @@ describe('WalletService', () => {
       .calls[0][0] as Transaction;
     expect(transactionPassedToSave.sourceTransactionId).toBe(
       input.sourceTransactionId,
+    );
+
+    const savedTransaction =
+      transactionRepositoryMock.save.mock.results[0]
+        .value as Promise<Partial<Transaction>>;
+    await expect(savedTransaction).resolves.toEqual(
+      expect.objectContaining({ sourceTransactionId: input.sourceTransactionId }),
     );
   });
 });
