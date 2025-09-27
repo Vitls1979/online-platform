@@ -19,7 +19,7 @@ export class Wallet {
     default: 0,
     transformer: currencyColumnTransformer,
   })
-  availableBalance!: number;
+  availableBalance!: string;
 
   @Column({
     type: 'numeric',
@@ -28,7 +28,7 @@ export class Wallet {
     default: 0,
     transformer: currencyColumnTransformer,
   })
-  bonusBalance!: number;
+  bonusBalance!: string;
 
   @Column({
     type: 'numeric',
@@ -37,7 +37,7 @@ export class Wallet {
     default: 0,
     transformer: currencyColumnTransformer,
   })
-  lockedBalance!: number;
+  lockedBalance!: string;
 
   @CreateDateColumn()
   createdAt!: Date;

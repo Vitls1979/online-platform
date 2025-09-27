@@ -45,6 +45,6 @@ export const currencyColumnTransformer = {
       return value as undefined | null;
     }
 
-    return Number(value);
+    return value;
   },
 };
