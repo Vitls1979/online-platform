@@ -1,0 +1,12 @@
+{
+  "name": "frontend",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "predev": "npm run generate:favicon",
+    "build": "next build",
+    "prebuild": "npm run generate:favicon",
+    "postinstall": "npm run generate:favicon",
+    "generate:favicon": "ts-node --project ../tsconfig.frontend.json scripts/generate-favicon.ts"
+  }
+}
