@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import Decimal from 'decimal.js';
 import { Wallet } from './wallet.entity';
 import { Transaction } from './wallet-transaction.entity';
+import { WalletBalanceLog } from './wallet-balance-log.entity';
 import { PaymentGatewayClient } from '../../shared/payment-gateway.client';
 
 export enum TransactionType {
@@ -39,6 +40,8 @@ export class WalletService {
     private readonly walletRepository: Repository<Wallet>,
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
+    @InjectRepository(WalletBalanceLog)
+    private readonly walletBalanceLogRepository: Repository<WalletBalanceLog>,
     private readonly dataSource: DataSource,
     private readonly paymentGateway: PaymentGatewayClient,
     private readonly eventEmitter: EventEmitter2,
@@ -136,12 +139,14 @@ export class WalletService {
         .toFixed(2);
       await runner.manager.save(wallet);
 
-      await runner.manager.insert('wallet_balance_log', {
+      const walletBalanceLogRepository =
+        runner.manager.getRepository(WalletBalanceLog);
+      const balanceLog = this.walletBalanceLogRepository.create({
         walletId: wallet.id,
         transactionId: transaction.id,
         balanceAfter: wallet.availableBalance,
-        createdAt: new Date(),
       });
+      await walletBalanceLogRepository.save(balanceLog);
 
       this.eventEmitter.emit('wallet.balance.updated', {
         userId: wallet.userId,

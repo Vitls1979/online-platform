@@ -9,6 +9,8 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
     "rootDir": ".",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "types": ["vitest/globals"]
   },
   "include": ["backend/**/*.ts", "backend/**/*.tsx"],
