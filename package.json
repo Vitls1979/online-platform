@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "lint": "tsc --noEmit -p tsconfig.frontend.json",
     "test": "vitest run"
   },
   "dependencies": {
