@@ -19,6 +19,7 @@ export class Wallet {
     default: 0,
     transformer: currencyColumnTransformer,
   })
+  /** Stored as a string to avoid precision loss for large balances. */
   availableBalance!: string;
 
   @Column({
@@ -28,6 +29,7 @@ export class Wallet {
     default: 0,
     transformer: currencyColumnTransformer,
   })
+  /** Stored as a string to avoid precision loss for large balances. */
   bonusBalance!: string;
 
   @Column({
@@ -37,6 +39,7 @@ export class Wallet {
     default: 0,
     transformer: currencyColumnTransformer,
   })
+  /** Stored as a string to avoid precision loss for large balances. */
   lockedBalance!: string;
 
   @CreateDateColumn()

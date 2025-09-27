@@ -30,9 +30,9 @@ const canBeReducedToPrimitive = (
   return typeof candidate.valueOf === 'function';
 };
 
-const toDatabaseString = (value: unknown): string => {
+const ensureString = (value: unknown): string => {
   if (typeof value === 'string') {
-    return value.toString();
+    return value;
   }
 
   if (typeof value === 'number' || typeof value === 'bigint') {
@@ -46,7 +46,7 @@ const toDatabaseString = (value: unknown): string => {
   if (canBeReducedToPrimitive(value)) {
     const primitive = value.valueOf();
     if (primitive !== value && primitive !== null && primitive !== undefined) {
-      return toDatabaseString(primitive);
+      return ensureString(primitive);
     }
   }
 
@@ -64,13 +64,13 @@ export const currencyColumnTransformer = {
       return value;
     }
 
-    return toDatabaseString(value);
+    return ensureString(value);
   },
   from(value?: string | null) {
     if (value === null || value === undefined) {
       return value as undefined | null;
     }
 
-    return value;
+    return ensureString(value);
   },
 };

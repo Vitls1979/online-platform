@@ -23,6 +23,7 @@ export class Transaction {
     scale: 2,
     transformer: currencyColumnTransformer,
   })
+  /** Stored as a string to avoid precision loss for large transaction amounts. */
   amount!: string;
 
   @Column({ type: 'enum', enum: TransactionType })
