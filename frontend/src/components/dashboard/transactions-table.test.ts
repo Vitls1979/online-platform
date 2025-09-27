@@ -14,7 +14,9 @@ describe("mapVisibleTransactionsToRows", () => {
       date: `2024-06-${index + 1}`,
     }));
 
-    const rows = mapVisibleTransactionsToRows(transactions);
+    const data = { transactions };
+
+    const rows = mapVisibleTransactionsToRows(data);
 
     expect(rows).toHaveLength(6);
     expect(rows[rows.length - 1]?.showSeparator).toBe(false);

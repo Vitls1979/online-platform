@@ -15,14 +15,18 @@ type TransactionRow = {
   showSeparator: boolean;
 };
 
-function getVisibleTransactions(transactions: Transaction[]): Transaction[] {
-  return transactions.slice(0, MAX_VISIBLE_TRANSACTIONS);
+type TransactionsData = {
+  transactions: Transaction[];
+};
+
+function getVisibleTransactions(data: TransactionsData): Transaction[] {
+  return data.transactions.slice(0, MAX_VISIBLE_TRANSACTIONS);
 }
 
 export function mapVisibleTransactionsToRows(
-  transactions: Transaction[],
+  data: TransactionsData,
 ): TransactionRow[] {
-  const visibleTransactions = getVisibleTransactions(transactions);
+  const visibleTransactions = getVisibleTransactions(data);
 
   return visibleTransactions.map((transaction, index) => ({
     transaction,
