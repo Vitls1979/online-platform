@@ -13,7 +13,10 @@ type EventSourceEventMap = {
 
 class MockEventSource extends EventTarget {
   public static instances: MockEventSource[] = [];
-  public readyState = 0;
+  public static CONNECTING = 0;
+  public static OPEN = 1;
+  public static CLOSED = 2;
+  public readyState = MockEventSource.CONNECTING;
   public onopen: ((this: EventSource, ev: EventSourceEventMap['open']) => void) | null = null;
   public onerror: ((this: EventSource, ev: EventSourceEventMap['error']) => void) | null = null;
   public onmessage:
@@ -27,12 +30,12 @@ class MockEventSource extends EventTarget {
   }
 
   emitOpen() {
-    this.readyState = 1;
+    this.readyState = MockEventSource.OPEN;
     this.onopen?.call(this as unknown as EventSource, new Event('open'));
   }
 
-  emitError() {
-    this.readyState = 0;
+  emitError(nextState = MockEventSource.CONNECTING) {
+    this.readyState = nextState;
     this.onerror?.call(this as unknown as EventSource, new Event('error'));
   }
 
@@ -71,43 +74,64 @@ describe('useBalanceStream', () => {
   });
 
   it('restores the stream after a transient error', () => {
-    const onMessage = vi.fn();
-    const { result, unmount } = renderHook(() =>
-      useBalanceStream<{ balance: number }>({ url: '/stream', onMessage }),
-    );
+    vi.useFakeTimers();
 
-    expect(result.current.status).toBe('connecting');
+    try {
+      const onMessage = vi.fn();
+      const { result, unmount } = renderHook(() =>
+        useBalanceStream<{ balance: number }>({ url: '/stream', onMessage }),
+      );
 
-    const source = MockEventSource.instances[0];
-    expect(source).toBeDefined();
+      expect(result.current.status).toBe('connecting');
 
-    act(() => {
-      source.emitOpen();
-    });
+      const source = MockEventSource.instances[0];
+      expect(source).toBeDefined();
 
-    expect(result.current.status).toBe('active');
+      act(() => {
+        source.emitOpen();
+      });
 
-    act(() => {
-      source.emitMessage(JSON.stringify({ balance: 150 }));
-    });
+      expect(result.current.status).toBe('active');
 
-    expect(onMessage).toHaveBeenCalledWith({ balance: 150 });
+      act(() => {
+        source.emitMessage(JSON.stringify({ balance: 150 }));
+      });
 
-    act(() => {
-      source.emitError();
-    });
+      expect(onMessage).toHaveBeenCalledWith({ balance: 150 });
 
-    expect(result.current.status).toBe('disconnected');
-    expect(source.close).not.toHaveBeenCalled();
+      act(() => {
+        source.emitError(MockEventSource.CLOSED);
+      });
 
-    act(() => {
-      source.emitOpen();
-    });
+      expect(result.current.status).toBe('connecting');
 
-    expect(result.current.status).toBe('active');
+      expect(source.close).not.toHaveBeenCalled();
 
-    unmount();
+      act(() => {
+        vi.runOnlyPendingTimers();
+      });
 
-    expect(source.close).toHaveBeenCalledTimes(1);
+      const nextSource = MockEventSource.instances[1];
+      expect(nextSource).toBeDefined();
+      expect(source.close).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        nextSource.emitOpen();
+      });
+
+      expect(result.current.status).toBe('active');
+
+      act(() => {
+        nextSource.emitMessage(JSON.stringify({ balance: 200 }));
+      });
+
+      expect(onMessage).toHaveBeenLastCalledWith({ balance: 200 });
+
+      unmount();
+
+      expect(nextSource.close).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
