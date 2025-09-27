@@ -4,18 +4,32 @@ export class AddSourceTransactionIdToWalletTransactions1717436400000
   implements MigrationInterface
 {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.addColumn(
+    const hasColumn = await queryRunner.hasColumn(
       'wallet_transactions',
-      new TableColumn({
-        name: 'sourceTransactionId',
-        type: 'varchar',
-        length: '128',
-        isNullable: true,
-      }),
+      'sourceTransactionId',
     );
+
+    if (!hasColumn) {
+      await queryRunner.addColumn(
+        'wallet_transactions',
+        new TableColumn({
+          name: 'sourceTransactionId',
+          type: 'varchar',
+          length: '128',
+          isNullable: true,
+        }),
+      );
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropColumn('wallet_transactions', 'sourceTransactionId');
+    const hasColumn = await queryRunner.hasColumn(
+      'wallet_transactions',
+      'sourceTransactionId',
+    );
+
+    if (hasColumn) {
+      await queryRunner.dropColumn('wallet_transactions', 'sourceTransactionId');
+    }
   }
 }

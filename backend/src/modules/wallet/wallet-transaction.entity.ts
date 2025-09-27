@@ -38,7 +38,7 @@ export class Transaction {
   externalId?: string;
 
   @Column({ type: 'varchar', length: 128, nullable: true })
-  sourceTransactionId?: string;
+  sourceTransactionId?: string | null;
 
   @Column({ nullable: true })
   failureReason?: string;
