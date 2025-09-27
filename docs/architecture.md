@@ -8,7 +8,7 @@ The platform delivers a regulated online gambling experience where players can r
 
 - **Acquisition & retention**: smooth onboarding with Telegram SSO and email-based 2FA, a responsive web app, and real-time engagement features.
 - **Regulatory compliance**: auditable player lifecycle, responsible gaming tooling, and segregated wallet accounting.
-- **Operational excellence**: centralized observability, infrastructure-as-code, progressive delivery with canary automation, and error-budget-driven release cadences to reduce risk while maintaining velocity.
+- **Operational excellence**: centralized observability, infrastructure-as-code, progressive delivery with canary automation, CI/CD automation to reduce release risk, and error-budget-driven release cadences to maintain velocity.
 - **Scalability & resilience**: microservice-ready backend with asynchronous messaging, horizontal scaling, clearly defined domain boundaries, automated failover playbooks, and active-active disaster recovery options.
 
 ### 1.1 Architecture Principles
