@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { currencyColumnTransformer } from './currency-column.transformer';
 
 @Entity({ name: 'wallets' })
 export class Wallet {
@@ -11,13 +12,31 @@ export class Wallet {
   @Column({ length: 3 })
   currency!: string;
 
-  @Column({ type: 'numeric', precision: 18, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 18,
+    scale: 2,
+    default: 0,
+    transformer: currencyColumnTransformer,
+  })
   availableBalance!: number;
 
-  @Column({ type: 'numeric', precision: 18, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 18,
+    scale: 2,
+    default: 0,
+    transformer: currencyColumnTransformer,
+  })
   bonusBalance!: number;
 
-  @Column({ type: 'numeric', precision: 18, scale: 2, default: 0 })
+  @Column({
+    type: 'numeric',
+    precision: 18,
+    scale: 2,
+    default: 0,
+    transformer: currencyColumnTransformer,
+  })
   lockedBalance!: number;
 
   @CreateDateColumn()
