@@ -1,45 +1,87 @@
 import { DataSource, Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { WalletService, TransactionType, TransactionStatus } from './wallet.service';
+import { vi, Mocked, describe, it, expect, beforeEach } from 'vitest';
+import {
+  WalletService,
+  TransactionType,
+  TransactionStatus,
+} from './wallet.service';
 import { Wallet } from './wallet.entity';
 import { Transaction } from './wallet-transaction.entity';
 import { PaymentGatewayClient } from '../../shared/payment-gateway.client';
 
+vi.mock('@nestjs/common', () => ({
+  Logger: class {
+    log = vi.fn();
+    warn = vi.fn();
+    error = vi.fn();
+  },
+  Injectable: () => (target: unknown) => target,
+}));
+
+vi.mock('@nestjs/typeorm', () => ({
+  InjectRepository: () => () => undefined,
+}));
+
+vi.mock('@nestjs/event-emitter', () => ({
+  EventEmitter2: class {
+    emit = vi.fn();
+  },
+}));
+
+vi.mock('typeorm', () => ({
+  Entity: () => () => undefined,
+  Column: () => () => undefined,
+  CreateDateColumn: () => () => undefined,
+  UpdateDateColumn: () => () => undefined,
+  PrimaryGeneratedColumn: () => () => undefined,
+  ManyToOne: () => () => undefined,
+  Repository: class {},
+  DataSource: class {},
+  QueryRunner: class {},
+}));
+
 describe('WalletService', () => {
   let service: WalletService;
-  let transactionRepositoryMock: {
-    create: jest.Mock;
-    save: jest.Mock;
-  };
-  let paymentGatewayMock: { createDepositIntent: jest.Mock };
+  let transactionRepositoryMock: Mocked<
+    Pick<Repository<Transaction>, 'create' | 'save'>
+  >;
+  let paymentGatewayMock: Mocked<
+    Pick<PaymentGatewayClient, 'createDepositIntent'>
+  >;
+  let eventEmitterMock: Mocked<Pick<EventEmitter2, 'emit'>>;
 
   beforeEach(() => {
     transactionRepositoryMock = {
-      create: jest.fn((transaction: Partial<Transaction>) => ({
+      create: vi.fn((transaction: Partial<Transaction>) => ({
         ...transaction,
-      })),
-      save: jest.fn(async (transaction: Partial<Transaction>) => ({
+      }) as Transaction),
+      save: vi.fn(async (transaction: Partial<Transaction>) => ({
         ...transaction,
-      })),
-    };
+      }) as Transaction),
+    } as Mocked<Pick<Repository<Transaction>, 'create' | 'save'>>;
 
     paymentGatewayMock = {
-      createDepositIntent: jest.fn(),
-    };
+      createDepositIntent: vi.fn(),
+    } as Mocked<Pick<PaymentGatewayClient, 'createDepositIntent'>>;
+
+    eventEmitterMock = {
+      emit: vi.fn(),
+    } as Mocked<Pick<EventEmitter2, 'emit'>>;
 
     service = new WalletService(
       {} as Repository<Wallet>,
       transactionRepositoryMock as unknown as Repository<Transaction>,
       {} as DataSource,
       paymentGatewayMock as unknown as PaymentGatewayClient,
-      { emit: jest.fn() } as unknown as EventEmitter2,
+      eventEmitterMock as unknown as EventEmitter2,
     );
   });
 
   it('persists the sourceTransactionId when creating a deposit intent', async () => {
     const input = {
       userId: 'user-1',
-      amount: 100,
+      amount: '100.00',
       currency: 'USD',
       type: TransactionType.DEPOSIT,
       sourceTransactionId: 'src-123',
@@ -70,10 +112,9 @@ describe('WalletService', () => {
       input.sourceTransactionId,
     );
 
-    const savedTransaction =
-      transactionRepositoryMock.save.mock.results[0]
-        .value as Promise<Partial<Transaction>>;
-    await expect(savedTransaction).resolves.toEqual(
+    const savedTransaction = await transactionRepositoryMock.save.mock.results[0]
+      ?.value;
+    expect(savedTransaction).toEqual(
       expect.objectContaining({ sourceTransactionId: input.sourceTransactionId }),
     );
   });
