@@ -8,6 +8,7 @@
     "experimentalDecorators": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
     "outDir": "dist",
     "rootDir": ".",
     "types": ["vitest/globals"]
@@ -16,7 +17,8 @@
     "backend/**/*.ts",
     "backend/**/*.tsx",
     "frontend/**/*.ts",
-    "frontend/**/*.tsx"
+    "frontend/**/*.tsx",
+    "frontend/**/*.d.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

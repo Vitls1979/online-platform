@@ -42,23 +42,32 @@ class MockEventSource extends EventTarget {
   }
 }
 
-declare global {
-  // eslint-disable-next-line no-var
-  var EventSource: typeof MockEventSource;
-}
+type MutableGlobal = typeof globalThis & {
+  EventSource?: typeof EventSource;
+};
 
 describe('useBalanceStream', () => {
+  let originalEventSource: typeof EventSource | undefined;
+
   beforeEach(() => {
     MockEventSource.instances = [];
     vi.restoreAllMocks();
-    global.EventSource = MockEventSource as unknown as typeof EventSource;
+    originalEventSource = globalThis.EventSource;
+    (globalThis as MutableGlobal).EventSource =
+      MockEventSource as unknown as typeof EventSource;
   });
 
   afterEach(() => {
     vi.clearAllMocks();
     // Ensure global EventSource is cleaned up between tests
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (globalThis as any).EventSource;
+    const globalWithEventSource = globalThis as MutableGlobal;
+
+    if (originalEventSource) {
+      globalWithEventSource.EventSource = originalEventSource;
+      return;
+    }
+
+    delete globalWithEventSource.EventSource;
   });
 
   it('restores the stream after a transient error', () => {
