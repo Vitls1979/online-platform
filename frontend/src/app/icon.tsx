@@ -1,43 +1,39 @@
 import { ImageResponse } from "next/server";
 
-const SIZE = 64;
-
-export const size = {
-  width: SIZE,
-  height: SIZE,
-};
+const size = 64;
 
 export const contentType = "image/svg+xml";
+
+export const width = size;
+export const height = size;
+
+const bgColor = "#0f172a";
+const accentColor = "#38bdf8";
 
 export default function Icon() {
   return new ImageResponse(
     (
       <svg
         xmlns="http://www.w3.org/2000/svg"
+        width={size}
+        height={size}
         viewBox="0 0 64 64"
-        width={SIZE}
-        height={SIZE}
       >
-        <defs>
-          <linearGradient id="accent" x1="0%" x2="100%" y1="0%" y2="100%">
-            <stop offset="0%" stopColor="#38bdf8" />
-            <stop offset="100%" stopColor="#6366f1" />
-          </linearGradient>
-        </defs>
-        <rect width="64" height="64" rx="14" fill="#0f172a" />
+        <rect width="64" height="64" rx="14" fill={bgColor} />
         <rect
-          x="8"
-          y="8"
-          width="48"
-          height="48"
-          rx="10"
-          fill="url(#accent)"
-          opacity="0.9"
+          x="10"
+          y="10"
+          width="44"
+          height="44"
+          rx="12"
+          fill="none"
+          stroke={accentColor}
+          strokeWidth="4"
         />
         <text
           x="50%"
           y="52%"
-          fill="#f8fafc"
+          fill={accentColor}
           fontFamily="'Inter', 'Segoe UI', sans-serif"
           fontSize="26"
           fontWeight="700"
@@ -47,6 +43,9 @@ export default function Icon() {
         </text>
       </svg>
     ),
-    size
+    {
+      width: size,
+      height: size,
+    }
   );
 }
