@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { Wallet } from './wallet.entity';
+import { currencyColumnTransformer } from './currency-column.transformer';
 import { TransactionStatus, TransactionType } from './wallet.service';
 
 @Entity({ name: 'wallet_transactions' })
@@ -16,7 +17,12 @@ export class Transaction {
   @Column({ length: 3 })
   currency!: string;
 
-  @Column({ type: 'numeric', precision: 18, scale: 2 })
+  @Column({
+    type: 'numeric',
+    precision: 18,
+    scale: 2,
+    transformer: currencyColumnTransformer,
+  })
   amount!: number;
 
   @Column({ type: 'enum', enum: TransactionType })
