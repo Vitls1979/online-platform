@@ -5,7 +5,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import Decimal from 'decimal.js';
 import { Wallet } from './wallet.entity';
 import { Transaction } from './wallet-transaction.entity';
-import { PaymentGatewayClient } from '../../shared/payment-gateway.client';
+import {
+  PaymentGatewayClient,
+  PaymentGatewayError,
+} from '../../shared/payment-gateway.client';
 
 export enum TransactionType {
   DEPOSIT = 'deposit',
@@ -69,12 +72,26 @@ export class WalletService {
     const normalizedAmount = new Decimal(amount).toFixed(2);
     this.logger.log(`Creating deposit intent for user ${userId}`);
 
-    const intent = await this.paymentGateway.createDepositIntent({
-      userId,
-      amount: normalizedAmount,
-      currency,
-      metadata: input.metadata,
-    });
+    let intent: { id: string; redirectUrl: string };
+    try {
+      intent = await this.paymentGateway.createDepositIntent({
+        userId,
+        amount: normalizedAmount,
+        currency,
+        metadata: input.metadata,
+      });
+    } catch (error) {
+      if (error instanceof PaymentGatewayError) {
+        this.logger.error(
+          `Payment provider rejected deposit intent for user ${userId}: ${error.message}`,
+        );
+      } else {
+        this.logger.error(
+          `Unexpected error when creating deposit intent for user ${userId}: ${(error as Error).message}`,
+        );
+      }
+      throw error;
+    }
 
     const transaction = this.transactionRepository.create({
       ...input,
