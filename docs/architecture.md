@@ -11,6 +11,13 @@ The platform delivers a regulated online gambling experience where players can r
 - **Operational excellence**: centralized observability, infrastructure-as-code, progressive delivery with canary automation, CI/CD automation to reduce release risk, and error-budget-driven release cadences to maintain velocity.
 - **Scalability & resilience**: microservice-ready backend with asynchronous messaging, horizontal scaling, clearly defined domain boundaries, automated failover playbooks, and active-active disaster recovery options.
 
+> **Сводка на русском языке.** Платформа покрывает полный цикл работы игрока — от регистрации через Telegram и email (2FA) до проведения платежей, начисления бонусов и построения отчетов. Архитектура строится модульно, чтобы можно было масштабировать систему, подключать новых провайдеров и платежные сервисы без переписывания ядра.
+>
+> - **Масштабируемость**: разбиение на независимые сервисы, использование брокера сообщений для асинхронных операций.
+> - **Надежность и устойчивость**: централизованный мониторинг и логирование, продуманное резервное копирование.
+> - **Безопасность**: многофакторная аутентификация, управление сессиями в Redis, соблюдение KYC/RG требований.
+> - **Гибкость**: модульная структура и возможность быстро внедрять новых провайдеров, платежные шлюзы и сценарии аналитики.
+
 ### 1.1 Architecture Principles
 
 - **Modularity first**: each bounded context can scale and be deployed independently without rewriting shared contracts.
@@ -46,12 +53,29 @@ Client (Next.js) ──▶ API Gateway (NestJS BFF)
                          └─▶ ClickHouse (analytics) ──▶ Reporting & BI
 ```
 
+> **Диаграмма на русском языке.**
+>
+> ```
+> Client (Next.js) -> API Gateway (NestJS) -> Модули домена -> Сервисы интеграций
+>                                               |                  |
+>                                               v                  v
+>                                            PostgreSQL          Провайдеры игр
+>                                               |
+>                                               v
+>                                            Kafka/NATS -> асинхронные задачи -> Worker-сервисы
+>                                               |
+>                                               v
+>                                           ClickHouse (ETL) -> Отчеты и аналитика
+> ```
+
 ### 3.1 Frontend
 
 - **Next.js (React + TypeScript)** as the primary application shell.
 - **Tailwind CSS** and **shadcn/ui** for the component design system.
 - **React Query** for data fetching and client-side caching.
 - **WebSocket / GraphQL subscriptions or Socket.IO** to surface live balance updates, gameplay status, and alerts.
+
+> **Локализация (Frontend, RU).** Клиентское приложение собирается на Next.js (React + TypeScript), использует Tailwind CSS и shadcn/ui в качестве дизайн-системы. Для работы с данными применяется React Query, а живые обновления (баланс, состояние игр, оповещения) доставляются через WebSocket/GraphQL subscriptions или Socket.IO.
 
 ### 3.2 Backend & Domain Services
 
@@ -66,6 +90,8 @@ Client (Next.js) ──▶ API Gateway (NestJS BFF)
 - **Monitoring Module**: health checks, metrics export, alert thresholds.
 - **Worker services** subscribe to Kafka/NATS topics for asynchronous processing (payments, ETL, notifications).
 
+> **Локализация (Backend, RU).** Backend строится на NestJS: BFF/API Gateway обслуживает фронтенд и маршрутизирует запросы к доменным сервисам. Auth Module обрабатывает регистрацию через Telegram, email и JWT/refresh токены; User Module управляет профилями, статусами KYC и лимитами; Wallet Module ведет кошельки и интеграции с платежами; Game Module управляет каталогом, сессиями и колбэками провайдера; Report Module формирует отчеты и взаимодействует с ClickHouse; Admin Module обеспечивает административный CRUD; Notification Module отвечает за рассылки (Telegram/email/SMS); Monitoring Module экспортирует метрики и health-check'и. Рабочие сервисы подписаны на Kafka/NATS для фоновых задач.
+
 ### 3.3 Data & Storage Strategy
 
 - **PostgreSQL** for transactional data (accounts, wallets, transactions, configurations).
@@ -74,6 +100,8 @@ Client (Next.js) ──▶ API Gateway (NestJS BFF)
 - **Object storage (MinIO/S3)** for report exports and large attachments.
 - **Backup & retention** policies applied per store; PITR for PostgreSQL, snapshotting for ClickHouse, and multi-region replication for object storage when required.
 
+> **Локализация (Хранение данных, RU).** PostgreSQL используется для транзакционных данных (пользователи, кошельки, транзакции, настройки). Redis хранит сессии, кеш и служит для rate limiting. ClickHouse — аналитическое хранилище и источник для отчетов. Объектное хранилище (MinIO/S3) собирает выгрузки. Для каждой базы определены политики бэкапов: PITR для PostgreSQL, snapshot'ы для ClickHouse, многорегиональная репликация для объектного стора.
+
 ### 3.4 Integrations & External Systems
 
 - **Payment gateways** (Stripe, PayPal, or local acquirers) for deposits and withdrawals.
@@ -81,6 +109,8 @@ Client (Next.js) ──▶ API Gateway (NestJS BFF)
 - **Telegram Bot API** for authentication and high-priority notifications.
 - **Email/SMS providers** for confirmations, 2FA, and responsible gaming alerts.
 - **Compliance/KYC vendors** (optional) for document verification and AML screening.
+
+> **Локализация (Интеграции, RU).** Платежные шлюзы (Stripe, PayPal или локальные эквайринги) поддерживают депозиты и выводы. Игровые провайдеры интегрируются через API, SSO и callback-эндпоинты. Telegram Bot API покрывает авторизацию и критичные уведомления. Email/SMS провайдеры используются для подтверждений и RG-оповещений. Дополнительно подключаются KYC/AML сервисы для верификации документов.
 
 ## 4. Key Data Flows
 
@@ -105,6 +135,12 @@ Client (Next.js) ──▶ API Gateway (NestJS BFF)
    1. Analyst configures filters in the UI → Report Module generates ClickHouse SQL.
    2. Reports are materialized, stored in object storage, and shared via secure download links.
    3. Notifications inform stakeholders about report availability (Telegram/email).
+
+> **Локализация (Потоки данных, RU).**
+> 1. Регистрация и аутентификация: пользователь стартует регистрацию через Telegram Bot, подтверждает email и проходит 2FA; данные и статусы KYC сохраняются в PostgreSQL, сессии — в Redis.
+> 2. Игровой процесс: пользователь выбирает игру (каталог + кеш Redis), BFF запрашивает launch session у Game Service, провайдер отправляет URL/SSO, исходы ставок публикуются в Kafka, Wallet Service обновляет баланс и транзакции, ETL синхронизирует ClickHouse.
+> 3. Платежи: депозит через BFF → Payment Service → провайдер; вебхуки обновляют статусы в Kafka и кошельке; выводы проходят проверки KYC/RG и отслеживаются по вебхукам.
+> 4. Отчеты: пользователь задает фильтры → Report Module генерирует SQL → отчет сохраняется в S3/MinIO → отправляется уведомление.
 
 ## 5. Domain Model Highlights
 
@@ -132,6 +168,12 @@ Client (Next.js) ──▶ API Gateway (NestJS BFF)
 - `ReportJob`: id, templateId, status, generatedAt, storageLocation.
 - ClickHouse tables: `transactions_log`, `bets_log`, `payments_log`, `user_activity`.
 
+> **Локализация (Доменная модель, RU).**
+> - Пользователи: `User`, `UserSettings`, `Session`.
+> - Балансы и транзакции: `Wallet`, `Transaction`, `Payment`.
+> - Игры: `Game`, `GameSession`, `Bet`.
+> - Отчеты: `ReportTemplate`, `ReportJob`, а также ClickHouse-таблицы `transactions_log`, `bets_log`, `payments_log`, `user_activity`.
+
 ## 6. Security, Compliance & Responsible Gaming
 
 - Multi-factor authentication (Telegram auth + email verification + TOTP/SMS).
@@ -142,6 +184,8 @@ Client (Next.js) ──▶ API Gateway (NestJS BFF)
 - WAF, rate limiting, bot detection, and DDoS mitigation at the edge.
 - Data encryption at rest (PostgreSQL, ClickHouse) and in transit (TLS everywhere).
 
+> **Локализация (Безопасность и RG, RU).** Telegram-авторизация + email-подтверждение + TOTP/SMS формируют MFA. Используется ролевая модель (игрок, саппорт, админ, аналитик). Реализуются ограничения по RG: лимиты депозитов/времени, самоисключение, проверка возраста. Все действия логируются, применяются WAF, rate limiting и защита от DDoS.
+
 ## 7. Observability & Operations
 
 - **OpenTelemetry** to propagate traces from the frontend through backend services and to external providers.
@@ -149,6 +193,8 @@ Client (Next.js) ──▶ API Gateway (NestJS BFF)
 - **ELK/EFK** stack for centralized structured logging and correlation with player actions.
 - **Alertmanager** (Telegram/email channels) for operational and compliance alerts.
 - Runbooks and SLOs maintained per service, with synthetic checks for critical journeys.
+
+> **Локализация (Мониторинг, RU).** OpenTelemetry обеспечивает трассировку запросов. Prometheus + Grafana собирают метрики (RPS, латентность, ошибки, лаг Kafka). Центральное логирование строится на ELK/EFK. Alertmanager доставляет уведомления (Telegram/email).
 
 ## 8. Delivery Roadmap
 
@@ -171,6 +217,11 @@ Client (Next.js) ──▶ API Gateway (NestJS BFF)
 - Containerize services, introduce Kubernetes deployments, auto-scaling, and blue/green releases.
 - Extend monitoring coverage, integrate antifraud scoring, and onboard additional providers.
 - Implement disaster recovery drills and cross-region replication where applicable.
+
+> **Локализация (План разработки, RU).**
+> - Этап 1 (1–2 месяца): развернуть BFF, Auth, User, Wallet; интегрировать Telegram и почтовый сервис; подключить одного игрового провайдера и платежный шлюз; реализовать личный кабинет с балансом и историей операций.
+> - Этап 2 (2–3 месяца): собрать конструктор отчетов, ETL и интеграцию с ClickHouse; выпустить админ-панель для управления пользователями/провайдерами/платежами; внедрить RG-функциональность.
+> - Этап 3 (4–6 месяцев): расширить масштабирование (Kubernetes, auto-scaling), усилить мониторинг и antifraud, проводить DR-дриллы и подключать дополнительных провайдеров.
 
 ## 9. Documentation Plan
 
