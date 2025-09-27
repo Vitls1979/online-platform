@@ -9,7 +9,7 @@ export class Wallet {
   @Column({ type: 'uuid' })
   userId!: string;
 
-  @Column({ length: 3 })
+  @Column({ type: 'varchar', length: 3 })
   currency!: string;
 
   @Column({

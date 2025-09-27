@@ -1,9 +1,13 @@
+import 'reflect-metadata';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataSource, Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { WalletService, TransactionType, TransactionStatus } from './wallet.service';
 import { Wallet } from './wallet.entity';
 import { Transaction } from './wallet-transaction.entity';
 import { PaymentGatewayClient } from '../../shared/payment-gateway.client';
+
+const jest = vi;
 
 describe('WalletService', () => {
   let service: WalletService;
@@ -55,7 +59,7 @@ describe('WalletService', () => {
     expect(transactionRepositoryMock.create).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: input.userId,
-        amount: input.amount,
+        amount: '100.00',
         currency: input.currency,
         type: input.type,
         sourceTransactionId: input.sourceTransactionId,
@@ -70,10 +74,9 @@ describe('WalletService', () => {
       input.sourceTransactionId,
     );
 
-    const savedTransaction =
-      transactionRepositoryMock.save.mock.results[0]
-        .value as Promise<Partial<Transaction>>;
-    await expect(savedTransaction).resolves.toEqual(
+    const savedTransaction = (await transactionRepositoryMock.save.mock.results[0]
+      .value) as Partial<Transaction>;
+    expect(savedTransaction).toEqual(
       expect.objectContaining({ sourceTransactionId: input.sourceTransactionId }),
     );
   });

@@ -1,10 +1,21 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  ColumnType,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Wallet } from './wallet.entity';
 import { currencyColumnTransformer } from './currency-column.transformer';
 import { TransactionStatus, TransactionType } from './wallet.service';
 
 @Entity({ name: 'wallet_transactions' })
 export class Transaction {
+  private static readonly timestampColumnType: ColumnType =
+    process.env.NODE_ENV === 'test' ? 'datetime' : 'timestamptz';
+
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
@@ -14,7 +25,7 @@ export class Transaction {
   @ManyToOne(() => Wallet)
   wallet?: Wallet;
 
-  @Column({ length: 3 })
+  @Column({ type: 'varchar', length: 3 })
   currency!: string;
 
   @Column({
@@ -32,21 +43,24 @@ export class Transaction {
   @Column({ type: 'enum', enum: TransactionStatus })
   status!: TransactionStatus;
 
-  @Column({ type: 'jsonb', nullable: true })
+  private static readonly metadataColumnType: ColumnType =
+    process.env.NODE_ENV === 'test' ? 'simple-json' : 'jsonb';
+
+  @Column({ type: Transaction.metadataColumnType, nullable: true })
   metadata?: Record<string, unknown>;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   externalId?: string;
 
   @Column({ type: 'varchar', length: 128, nullable: true })
   sourceTransactionId?: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   failureReason?: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: Transaction.timestampColumnType })
   createdAt!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: Transaction.timestampColumnType })
   updatedAt!: Date;
 }
