@@ -12,6 +12,11 @@
     "rootDir": ".",
     "types": ["vitest/globals"]
   },
-  "include": ["backend/**/*.ts", "backend/**/*.tsx"],
+  "include": [
+    "backend/**/*.ts",
+    "backend/**/*.tsx",
+    "frontend/**/*.ts",
+    "frontend/**/*.tsx"
+  ],
   "exclude": ["node_modules", "dist"]
 }
