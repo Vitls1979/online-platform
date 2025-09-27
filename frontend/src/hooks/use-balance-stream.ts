@@ -61,47 +61,95 @@ export const useBalanceStream = <TMessage = unknown>(
     }
 
     let isUnmounted = false;
+    let source: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    setStatus('connecting');
-    setLatestMessage(null);
-
-    const source = new EventSource(url, { withCredentials });
-
-    source.onopen = () => {
-      if (!isUnmounted) {
-        setStatus('active');
+    const clearReconnectTimer = () => {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
       }
     };
 
-    source.onmessage = (event: MessageEvent<string>) => {
+    const cleanupSource = () => {
+      if (source) {
+        source.close();
+        source = null;
+      }
+    };
+
+    const scheduleReconnect = (currentSource: EventSource) => {
+      if (isUnmounted || reconnectTimer) {
+        return;
+      }
+
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+
+        if (isUnmounted || source !== currentSource) {
+          return;
+        }
+
+        cleanupSource();
+        connect();
+      }, 1000);
+    };
+
+    const connect = () => {
       if (isUnmounted) {
         return;
       }
 
-      const parser = parserRef.current ?? defaultParser<TMessage>;
-      let parsed: TMessage;
+      setStatus('connecting');
 
-      try {
-        parsed = parser(event);
-      } catch (error) {
-        console.error('Failed to parse balance stream message', error);
-        return;
-      }
+      const nextSource = new EventSource(url, { withCredentials });
+      source = nextSource;
 
-      setLatestMessage(parsed);
-      messageHandlerRef.current?.(parsed);
+      nextSource.onopen = () => {
+        if (!isUnmounted && source === nextSource) {
+          setStatus('active');
+        }
+      };
+
+      nextSource.onmessage = (event: MessageEvent<string>) => {
+        if (isUnmounted || source !== nextSource) {
+          return;
+        }
+
+        const parser = parserRef.current ?? defaultParser<TMessage>;
+        let parsed: TMessage;
+
+        try {
+          parsed = parser(event);
+        } catch (error) {
+          console.error('Failed to parse balance stream message', error);
+          return;
+        }
+
+        setLatestMessage(parsed);
+        messageHandlerRef.current?.(parsed);
+      };
+
+      nextSource.onerror = () => {
+        if (isUnmounted || source !== nextSource) {
+          return;
+        }
+
+        setStatus('connecting');
+
+        if (nextSource.readyState === EventSource.CLOSED) {
+          scheduleReconnect(nextSource);
+        }
+      };
     };
 
-    source.onerror = () => {
-      if (!isUnmounted) {
-        setStatus('disconnected');
-      }
-      // Allow the native EventSource instance to handle reconnection attempts.
-    };
+    setLatestMessage(null);
+    connect();
 
     return () => {
       isUnmounted = true;
-      source.close();
+      clearReconnectTimer();
+      cleanupSource();
     };
   }, [url, withCredentials]);
 
