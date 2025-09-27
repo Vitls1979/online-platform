@@ -37,6 +37,9 @@ export class Transaction {
   @Column({ nullable: true })
   externalId?: string;
 
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  sourceTransactionId?: string;
+
   @Column({ nullable: true })
   failureReason?: string;
 
