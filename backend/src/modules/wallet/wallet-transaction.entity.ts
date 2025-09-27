@@ -23,7 +23,7 @@ export class Transaction {
     scale: 2,
     transformer: currencyColumnTransformer,
   })
-  amount!: number;
+  amount!: string;
 
   @Column({ type: 'enum', enum: TransactionType })
   type!: TransactionType;

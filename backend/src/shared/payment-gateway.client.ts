@@ -7,7 +7,7 @@ export interface DepositIntent {
 
 export interface CreateDepositIntentPayload {
   userId: string;
-  amount: number;
+  amount: string;
   currency: string;
   metadata?: Record<string, unknown>;
 }
