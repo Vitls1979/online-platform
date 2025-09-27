@@ -208,3 +208,24 @@ jobs:
       - run: npm run lint
       - run: npm run test
 ```
+
+## 11. Deployment Environments
+
+- **Local & CI**: Docker Compose for PostgreSQL, Redis, ClickHouse, and mock provider services to mirror production contracts.
+- **Staging**: Managed PostgreSQL/Redis instances with feature-flag toggles, seeded wallets, and anonymized production telemetry for load validation.
+- **Production**: Multi-AZ Kubernetes clusters with blue/green rollouts, automated database migrations, and read replicas for analytics workloads.
+- **Disaster recovery**: Warm standby region with asynchronous replication and quarterly failover drills coordinated with payment providers.
+
+## 12. Quality & Release Governance
+
+- **Automated testing**: Contract tests for provider integrations, end-to-end Cypress flows for player journeys, and load tests that validate session concurrency.
+- **Change management**: Trunk-based development with short-lived feature branches, progressive delivery through canary stages, and rollback playbooks per service.
+- **Security reviews**: Scheduled threat-model updates, dependency scanning, and quarterly tabletop exercises for regulatory incidents.
+- **Stakeholder communication**: Release notes distributed to compliance, operations, and VIP support teams with links to updated runbooks and KPIs.
+
+## 13. Open Questions & Next Steps
+
+- Prioritize which additional payment gateways to onboard for launch geography coverage.
+- Finalize provider certification requirements and mapping of jurisdictional compliance documents.
+- Define SLAs for external integrations (KYC, payment gateways) and document contingency flows.
+- Confirm analytics retention policy alignment between ClickHouse and long-term cold storage.
