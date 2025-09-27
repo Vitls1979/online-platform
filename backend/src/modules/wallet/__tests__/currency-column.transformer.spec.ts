@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import Decimal from 'decimal.js';
 import { currencyColumnTransformer } from '../currency-column.transformer';
 
 class GuardedDecimal {
@@ -19,6 +20,12 @@ describe('currencyColumnTransformer', () => {
 
     expect(() => currencyColumnTransformer.to(value)).not.toThrow();
     expect(currencyColumnTransformer.to(value)).toBe('1000000000000000.55');
+  });
+
+  it('serializes Decimal.js instances via toString without precision loss', () => {
+    const decimal = new Decimal('1000000000000000.55');
+
+    expect(currencyColumnTransformer.to(decimal)).toBe('1000000000000000.55');
   });
 
   it('preserves precision for large balances when persisting and hydrating', () => {
