@@ -26,6 +26,7 @@ export interface CreateTransactionInput {
   currency: string;
   type: TransactionType;
   metadata?: Record<string, unknown>;
+  sourceTransactionId?: string;
 }
 
 @Injectable()
@@ -73,8 +74,11 @@ export class WalletService {
       metadata: input.metadata,
     });
 
+    const { sourceTransactionId, ...transactionData } = input;
+
     const transaction = this.transactionRepository.create({
-      ...input,
+      ...transactionData,
+      sourceTransactionId,
       status: TransactionStatus.PENDING,
       externalId: intent.id,
     });

@@ -87,7 +87,7 @@ Client (Next.js) -> API Gateway (NestJS) -> Модули домена -> Сер�
 ### 4.2 Балансы и транзакции
 
 - `Wallet`: userId, currency, availableBalance, bonusBalance, lockedBalance.
-- `Transaction`: id, userId, type (deposit/withdrawal/bet/win/bonus), amount, currency, status, referenceId.
+- `Transaction`: id, userId, type (deposit/withdrawal/bet/win/bonus), amount, currency, status, referenceId, sourceTransactionId.
 - `Payment`: id, userId, gateway, amount, status, metadata, kycRequired.
 
 ### 4.3 Игры
