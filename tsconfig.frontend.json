@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist/frontend",
+    "rootDir": "frontend"
+  },
+  "include": [
+    "frontend/**/*.ts",
+    "frontend/**/*.tsx",
+    "frontend/**/*.d.ts"
+  ]
+}

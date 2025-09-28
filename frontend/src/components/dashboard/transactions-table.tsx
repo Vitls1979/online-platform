@@ -1,58 +1,66 @@
-"use client";
+'use client';
 
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useBalanceStream, BalanceStreamStatus } from '@/hooks/use-balance-stream';
+import { Transaction } from '@/lib/types';
+import { Skeleton } from "@/components/ui/skeleton";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { formatCurrency } from "@/lib/utils";
-import type { BalanceSnapshot } from "@/types/balance";
+// A component to display the real-time balance and connection status
+const BalanceDisplay = ({ balance, status }: { balance: number | null, status: BalanceStreamStatus }) => {
+  const statusIndicatorColor = {
+    connecting: 'text-yellow-500',
+    connected: 'text-green-500',
+    disconnected: 'text-red-500',
+  }[status];
 
-export function TransactionsTable({ data }: { data?: BalanceSnapshot }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Недавние транзакции</CardTitle>
-        <CardDescription>
-          Последние операции из BFF. Новые события подгружаются автоматически.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {data?.transactions?.length ? (
-          data.transactions.slice(0, 6).map((transaction, index) => (
-            <div key={transaction.id} className="space-y-3">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-medium">{transaction.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(transaction.date), "d MMMM yyyy, HH:mm", { locale: ru })}
-                  </p>
-                </div>
-                <div
-                  className={
-                    transaction.type === "credit"
-                      ? "flex items-center gap-2 text-sm font-semibold text-emerald-600"
-                      : "flex items-center gap-2 text-sm font-semibold text-rose-600"
-                  }
-                >
-                  {transaction.type === "credit" ? (
-                    <ArrowUpRight className="h-4 w-4" />
-                  ) : (
-                    <ArrowDownRight className="h-4 w-4" />
-                  )}
-                  {formatCurrency(transaction.amount, transaction.currency)}
-                </div>
-              </div>
-              {index < data.transactions.length - 1 ? <Separator /> : null}
-            </div>
-          ))
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            История операций появится после первой транзакции.
-          </p>
-        )}
-      </CardContent>
-    </Card>
+    <div className="mb-4 text-center">
+      <h2 className="text-2xl font-bold">
+        {balance !== null ? `$${balance.toFixed(2)}` : <Skeleton className="h-8 w-32 inline-block" />}
+      </h2>
+      <p className={`text-sm font-semibold ${statusIndicatorColor}`}>
+        {status.toUpperCase()}
+      </p>
+    </div>
   );
+};
+
+// A component to display a list of transactions (placeholder)
+const TransactionList = ({ transactions }: { transactions: Transaction[] }) => {
+  if (transactions.length === 0) {
+    return <p className="text-center text-gray-500">No transactions yet.</p>;
+  }
+  // This would be fleshed out to display a nice table or list
+  return (
+    <ul>
+      {transactions.map((tx) => (
+        <li key={tx.id}>{tx.description}: ${tx.amount}</li>
+      ))}
+    </ul>
+  );
+};
+
+
+export default function TransactionsTable() {
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const { balance, status, lastMessage } = useBalanceStream({
+        onMessage: (message) => {
+            console.log('Received transaction:', message);
+            if (message.type === 'transaction') {
+                setTransactions(prev => [message.data, ...prev]);
+            }
+        },
+    });
+
+    useEffect(() => {
+        // Here you would typically fetch initial transactions
+        // For now, we just rely on the stream
+    }, []);
+
+    return (
+        <div>
+            <BalanceDisplay balance={balance} status={status} />
+            <TransactionList transactions={transactions} />
+        </div>
+    );
 }

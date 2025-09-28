@@ -5,12 +5,20 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "strict": false,
+    "experimentalDecorators": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
     "outDir": "dist",
     "rootDir": ".",
     "types": ["vitest/globals"]
   },
-  "include": ["backend/**/*.ts", "backend/**/*.tsx"],
+  "include": [
+    "backend/**/*.ts",
+    "backend/**/*.tsx",
+    "frontend/**/*.ts",
+    "frontend/**/*.tsx",
+    "frontend/**/*.d.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
