@@ -3,12 +3,21 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "lint": "tsc --noEmit -p tsconfig.frontend.json",
     "test": "vitest run"
   },
   "dependencies": {
-    "decimal.js": "^10.4.3"
+    "decimal.js": "^10.4.3",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.33.4"
   },
   "devDependencies": {
+    "@testing-library/react": "^14.2.1",
+    "@types/react": "^18.2.61",
+    "@types/react-dom": "^18.2.19",
+    "jsdom": "^24.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "typescript": "^5.4.0",
     "vitest": "^1.5.0",
     "ts-node": "^10.9.2"
