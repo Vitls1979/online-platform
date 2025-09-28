@@ -23,7 +23,9 @@ export function BalanceDashboard() {
     queryFn: fetchBalance,
   });
 
-  const isConnected = useBalanceStream(!isError);
+  const { status, lastMessage } = useBalanceStream();
+  const isRealtimeActive = status === "connected";
+  const latestTransaction = lastMessage?.type === "transaction" ? lastMessage.data : undefined;
 
   return (
     <div className="space-y-8">
@@ -35,7 +37,7 @@ export function BalanceDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <RealtimeIndicator active={isConnected} />
+          <RealtimeIndicator active={isRealtimeActive} />
           <Button variant="outline" onClick={() => refetch()} disabled={isRefetching}>
             <RefreshCw className="mr-2 h-4 w-4" />
             {isRefetching ? "Обновляем..." : "Обновить"}
@@ -43,7 +45,7 @@ export function BalanceDashboard() {
         </div>
       </div>
       <BalanceSummary data={data} isLoading={isPending} isError={isError} />
-      <TransactionsTable data={data} />
+      <TransactionsTable data={data} latestTransaction={latestTransaction} />
     </div>
   );
 }
