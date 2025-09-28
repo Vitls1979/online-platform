@@ -11,6 +11,8 @@
     "jsx": "react-jsx",
     "outDir": "dist",
     "rootDir": ".",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "types": ["vitest/globals"]
   },
   "include": [
