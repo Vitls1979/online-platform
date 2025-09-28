@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 export type BalanceUpdateMessage = {
   type: 'balance';
   data: {
-    balance: number;
+    available: number;
+    pending: number;
+    updatedAt: string;
   };
 };
 
@@ -12,15 +14,17 @@ export type TransactionMessage = {
   type: 'transaction';
   data: {
     id: string;
+    type: 'credit' | 'debit';
     amount: number;
+    currency: string;
     description: string;
-    timestamp: string;
+    date: string;
   };
 };
 
 export type ServerMessage = BalanceUpdateMessage | TransactionMessage;
 
-export type BalanceStreamStatus = 'connecting' | 'connected' | 'disconnected';
+export type BalanceStreamStatus = 'connecting' | 'active' | 'disconnected';
 
 // Define the options for the hook
 export interface UseBalanceStreamOptions {
@@ -39,9 +43,11 @@ export interface BalanceStreamState {
 }
 
 const defaultOptions: Required<Pick<UseBalanceStreamOptions, 'url' | 'withCredentials'>> = {
-  url: '/api/balance-stream',
+  url: '/api/balance/stream',
   withCredentials: true,
 };
+
+const RECONNECT_DELAY = 1000;
 
 /**
  * A React hook that keeps up-to-date with the user's balance via a Server-Sent Events (SSE) stream.
@@ -55,6 +61,7 @@ export const useBalanceStream = (options: UseBalanceStreamOptions = {}): Balance
 
   // Use a ref to hold the EventSource instance so it doesn't get recreated on every render
   const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use a ref to hold the latest onMessage callback to avoid re-running the effect when it changes
   const onMessageRef = useRef(options.onMessage);
@@ -63,46 +70,92 @@ export const useBalanceStream = (options: UseBalanceStreamOptions = {}): Balance
   }, [options.onMessage]);
 
   useEffect(() => {
-    setStatus('connecting');
-    const eventSource = new EventSource(finalOptions.url, { withCredentials: finalOptions.withCredentials });
-    eventSourceRef.current = eventSource;
+    let isUnmounted = false;
 
-    eventSource.onopen = () => {
-      setStatus('connected');
-      setError(null);
-    };
-
-    eventSource.onerror = (err) => {
-      setStatus('disconnected');
-      setError(err);
-      if (options.onError) {
-        options.onError(err);
-      }
-      // The browser will automatically try to reconnect, so we don't need to close here
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        const parsedMessage: ServerMessage = JSON.parse(event.data);
-        setLastMessage(parsedMessage);
-
-        if (parsedMessage.type === 'balance') {
-          setBalance(parsedMessage.data.balance);
-        }
-
-        // Call the user-provided callback
-        if (onMessageRef.current) {
-          onMessageRef.current(parsedMessage);
-        }
-      } catch (e) {
-        console.error('Failed to parse SSE message:', event.data, e);
+    const cleanupReconnectTimeout = () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
     };
+
+    const connect = () => {
+      if (isUnmounted) {
+        return;
+      }
+
+      setStatus('connecting');
+      const eventSource = new EventSource(finalOptions.url, { withCredentials: finalOptions.withCredentials });
+      eventSourceRef.current = eventSource;
+
+      eventSource.onopen = () => {
+        if (isUnmounted) {
+          return;
+        }
+        setStatus('active');
+        setError(null);
+      };
+
+      eventSource.onerror = (err) => {
+        if (isUnmounted) {
+          return;
+        }
+
+        setError(err);
+        if (options.onError) {
+          options.onError(err);
+        }
+
+        if (eventSource.readyState === EventSource.CLOSED) {
+          setStatus('connecting');
+          eventSource.close();
+          eventSourceRef.current = null;
+
+          cleanupReconnectTimeout();
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connect();
+          }, RECONNECT_DELAY);
+          return;
+        }
+
+        if (eventSource.readyState === EventSource.CONNECTING) {
+          setStatus('connecting');
+          return;
+        }
+
+        setStatus('disconnected');
+      };
+
+      eventSource.onmessage = (event) => {
+        if (isUnmounted) {
+          return;
+        }
+
+        try {
+          const parsedMessage: ServerMessage = JSON.parse(event.data);
+          setLastMessage(parsedMessage);
+
+          if (parsedMessage.type === 'balance') {
+            setBalance(parsedMessage.data.available);
+          }
+
+          if (onMessageRef.current) {
+            onMessageRef.current(parsedMessage);
+          }
+        } catch (e) {
+          console.error('Failed to parse SSE message:', event.data, e);
+        }
+      };
+    };
+
+    connect();
 
     // Cleanup function to close the connection when the component unmounts
     return () => {
-      if (eventSource) {
-        eventSource.close();
+      isUnmounted = true;
+      cleanupReconnectTimeout();
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
     };

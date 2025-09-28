@@ -11,16 +11,43 @@ export async function GET(request: Request) {
     start(controller) {
       const snapshot = getBalance();
       controller.enqueue(
-        encoder.encode(`data: ${JSON.stringify({
-          available: snapshot.available,
-          pending: snapshot.pending,
-          updatedAt: snapshot.updatedAt,
-        })}\n\n`),
+        encoder.encode(
+          `data: ${JSON.stringify({
+            type: "balance",
+            data: {
+              available: snapshot.available,
+              pending: snapshot.pending,
+              updatedAt: snapshot.updatedAt,
+            },
+          })}\n\n`,
+        ),
       );
 
       interval = setInterval(() => {
         const payload = updateBalance();
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: "balance",
+              data: {
+                available: payload.available,
+                pending: payload.pending,
+                updatedAt: payload.updatedAt,
+              },
+            })}\n\n`,
+          ),
+        );
+
+        if (payload.transaction) {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: "transaction",
+                data: payload.transaction,
+              })}\n\n`,
+            ),
+          );
+        }
       }, 5000);
 
       const close = () => {

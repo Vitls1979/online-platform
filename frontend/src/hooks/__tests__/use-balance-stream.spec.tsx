@@ -78,9 +78,7 @@ describe('useBalanceStream', () => {
 
     try {
       const onMessage = vi.fn();
-      const { result, unmount } = renderHook(() =>
-        useBalanceStream<{ balance: number }>({ url: '/stream', onMessage }),
-      );
+      const { result, unmount } = renderHook(() => useBalanceStream({ url: '/stream', onMessage }));
 
       expect(result.current.status).toBe('connecting');
 
@@ -94,10 +92,55 @@ describe('useBalanceStream', () => {
       expect(result.current.status).toBe('active');
 
       act(() => {
-        source.emitMessage(JSON.stringify({ balance: 150 }));
+        source.emitMessage(
+          JSON.stringify({
+            type: 'balance',
+            data: {
+              available: 150,
+              pending: 25,
+              updatedAt: '2024-01-01T00:00:00.000Z',
+            },
+          }),
+        );
       });
 
-      expect(onMessage).toHaveBeenCalledWith({ balance: 150 });
+      expect(result.current.balance).toBe(150);
+      expect(onMessage).toHaveBeenCalledWith({
+        type: 'balance',
+        data: {
+          available: 150,
+          pending: 25,
+          updatedAt: '2024-01-01T00:00:00.000Z',
+        },
+      });
+
+      act(() => {
+        source.emitMessage(
+          JSON.stringify({
+            type: 'transaction',
+            data: {
+              id: 'tx-1',
+              type: 'credit',
+              amount: 99.5,
+              currency: 'USD',
+              description: 'Test credit',
+              date: '2024-01-01T00:00:01.000Z',
+            },
+          }),
+        );
+      });
+
+      expect(onMessage).toHaveBeenLastCalledWith({
+        type: 'transaction',
+        data: {
+          id: 'tx-1',
+          type: 'credit',
+          amount: 99.5,
+          currency: 'USD',
+          description: 'Test credit',
+          date: '2024-01-01T00:00:01.000Z',
+        },
+      });
 
       act(() => {
         source.emitError(MockEventSource.CLOSED);
@@ -105,10 +148,10 @@ describe('useBalanceStream', () => {
 
       expect(result.current.status).toBe('connecting');
 
-      expect(source.close).not.toHaveBeenCalled();
+      expect(source.close).toHaveBeenCalledTimes(1);
 
       act(() => {
-        vi.runOnlyPendingTimers();
+        vi.advanceTimersByTime(1000);
       });
 
       const nextSource = MockEventSource.instances[1];
@@ -122,10 +165,26 @@ describe('useBalanceStream', () => {
       expect(result.current.status).toBe('active');
 
       act(() => {
-        nextSource.emitMessage(JSON.stringify({ balance: 200 }));
+        nextSource.emitMessage(
+          JSON.stringify({
+            type: 'balance',
+            data: {
+              available: 200,
+              pending: 50,
+              updatedAt: '2024-01-01T00:05:00.000Z',
+            },
+          }),
+        );
       });
 
-      expect(onMessage).toHaveBeenLastCalledWith({ balance: 200 });
+      expect(onMessage).toHaveBeenLastCalledWith({
+        type: 'balance',
+        data: {
+          available: 200,
+          pending: 50,
+          updatedAt: '2024-01-01T00:05:00.000Z',
+        },
+      });
 
       unmount();
 
@@ -139,9 +198,7 @@ describe('useBalanceStream', () => {
     vi.useFakeTimers();
 
     try {
-      const { result, unmount } = renderHook(() =>
-        useBalanceStream<{ balance: number }>({ url: '/stream' }),
-      );
+      const { result, unmount } = renderHook(() => useBalanceStream({ url: '/stream' }));
 
       const source = MockEventSource.instances[0];
       expect(source).toBeDefined();
