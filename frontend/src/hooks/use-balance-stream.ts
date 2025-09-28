@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 
+import type { Transaction } from "@/types/balance";
+
 // Define the shape of the messages we expect from the server
 export type BalanceUpdateMessage = {
   type: 'balance';
@@ -8,15 +10,14 @@ export type BalanceUpdateMessage = {
   };
 };
 
+type RawTransactionPayload = Transaction & { timestamp?: string };
+
 export type TransactionMessage = {
   type: 'transaction';
-  data: {
-    id: string;
-    amount: number;
-    description: string;
-    timestamp: string;
-  };
+  data: Transaction;
 };
+
+type RawServerMessage = BalanceUpdateMessage | { type: 'transaction'; data: RawTransactionPayload };
 
 export type ServerMessage = BalanceUpdateMessage | TransactionMessage;
 
@@ -83,16 +84,27 @@ export const useBalanceStream = (options: UseBalanceStreamOptions = {}): Balance
 
     eventSource.onmessage = (event) => {
       try {
-        const parsedMessage: ServerMessage = JSON.parse(event.data);
-        setLastMessage(parsedMessage);
+        const parsedMessage: RawServerMessage = JSON.parse(event.data);
 
-        if (parsedMessage.type === 'balance') {
-          setBalance(parsedMessage.data.balance);
+        const normalisedMessage: ServerMessage = parsedMessage.type === 'transaction'
+          ? {
+              type: 'transaction',
+              data: {
+                ...parsedMessage.data,
+                date: parsedMessage.data.date ?? parsedMessage.data.timestamp ?? new Date().toISOString(),
+              },
+            }
+          : parsedMessage;
+
+        setLastMessage(normalisedMessage);
+
+        if (normalisedMessage.type === 'balance') {
+          setBalance(normalisedMessage.data.balance);
         }
 
         // Call the user-provided callback
         if (onMessageRef.current) {
-          onMessageRef.current(parsedMessage);
+          onMessageRef.current(normalisedMessage);
         }
       } catch (e) {
         console.error('Failed to parse SSE message:', event.data, e);
