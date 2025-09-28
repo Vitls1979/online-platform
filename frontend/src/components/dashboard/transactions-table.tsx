@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const BalanceDisplay = ({ balance, status }: { balance: number | null, status: BalanceStreamStatus }) => {
   const statusIndicatorColor = {
     connecting: 'text-yellow-500',
-    connected: 'text-green-500',
+    active: 'text-green-500',
     disconnected: 'text-red-500',
   }[status];
 

@@ -1,9 +1,14 @@
 import path from "path";
-import react from "@vitejs/plugin-react";
+import react from "./config/noop-react-plugin";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
+  css: {
+    postcss: {
+      plugins: [],
+    },
+  },
   test: {
     environment: "jsdom",
     globals: true,
@@ -16,6 +21,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@testing-library/jest-dom/vitest": path.resolve(
+        __dirname,
+        "./config/jest-dom-vitest",
+      ),
     },
   },
 });
