@@ -1,23 +1,70 @@
-# Online Gaming Platform Architecture Blueprint
+    
+# Онлайн-платформа азартных игр
 
-This repository captures the high-level architecture, module boundaries, and example implementation details for a modular online gaming platform. The platform enables Telegram-based onboarding, secure wallet management, integrations with payment gateways and game providers, and rich reporting & administration capabilities.
+Этот репозиторий описывает высокоуровневую архитектуру и пример реализации модульной онлайн-платформы для азартных игр. Платформа обеспечивает регистрацию и вход пользователей через Telegram, безопасное управление кошельком, интеграцию с платежными шлюзами и игровыми провайдерами, а также широкие возможности для отчетности и администрирования.
 
-## Contents
-- `docs/architecture.md` – System overview, technology stack, integrations, and roadmap.
-- `docs/module-structure.md` – Proposed monorepo structure covering apps, services, shared libraries, and infrastructure assets.
-- `backend/apps/api/src/modules/wallet` – Reference NestJS wallet module demonstrating service, controller, DTO, and event patterns.
+## Ключевые требования
+- Двухфакторная аутентификация с использованием входа через Telegram и подтверждения по электронной почте.
+- Кошелек с поддержкой нескольких балансов (реальный, бонусный, заблокированный) и историей транзакций.
+- Интеграция с игровыми провайдерами через адаптер для запуска игровых сессий и обработки ставок.
+- Интеграция с платежными шлюзами с обработкой веб-хуков, лимитами на вывод средств с учетом KYC и правилами AML.
+- Конструктор отчетов на базе ClickHouse с возможностью кастомизации и экспорта данных.
+- Административная консоль для управления пользователями, настройки провайдеров и мониторинга.
 
-## Key Requirements (Summary)
-- Two-factor authentication using Telegram login + email confirmation.
-- Wallet with multi-balance support (cash, bonus, locked) and transactional history.
-- Game provider integrations via adapter layer for launching sessions and processing bets.
-- Payment gateway integration with webhook processing, KYC-aware withdrawal limits, and AML rules.
-- Report builder powered by ClickHouse analytics and customizable exports.
-- Administrative console for user management, provider configuration, and monitoring.
+## Структура репозитория
 
-## Development Approach
-1. **Phase 1 (1–2 months)**: Core authentication, wallet ledger, initial provider + payment integration.
-2. **Phase 2 (2–3 months)**: Reporting pipeline, ClickHouse ETL, administrator tooling.
-3. **Phase 3 (4–6 months)**: Infrastructure hardening, observability, anti-fraud enhancements, multi-provider scaling.
+  
 
-The blueprint prioritizes domain-driven boundaries, event-driven communication (Kafka/NATS), and observability with OpenTelemetry and Prometheus. It can be used as a starting point for implementation within a multi-service TypeScript monorepo.
+.
+├── README.md
+├── docs/
+│ ├── architecture.md
+│ ├── backend-services.md
+│ ├── database-schema.md
+│ ├── frontend.md
+│ └── reporting.md
+└── backend/
+└── nest-app/
+└── src/
+└── modules/
+└── wallet/
+├── dto/
+│ └── create-transaction.dto.ts
+├── wallet-account.entity.ts
+├── wallet-event.publisher.ts
+├── wallet.service.ts
+└── wallet-transaction.entity.ts
+code Code
+
+    
+## Основные компоненты
+
+- **Frontend (Next.js)**: TailwindCSS, shadcn/ui, React Query, WebSocket для обновления балансов в реальном времени.
+- **API Gateway / BFF (NestJS)**: единая точка входа, GraphQL/REST, защита и агрегация данных.
+- **Сервисы**: пользовательский, кошельковый, игровой, платёжный, отчётный и административный модули.
+- **Инфраструктура**: PostgreSQL, Redis, ClickHouse, Kafka/NATS, Prometheus, OpenTelemetry.
+
+## Документация
+
+- [Архитектура](docs/architecture.md)
+- [Бэкенд сервисы](docs/backend-services.md)
+- [Схемы баз данных](docs/database-schema.md)
+- [Frontend](docs/frontend.md)
+- [Конструктор отчётов](docs/reporting.md)
+
+## Пример WalletService
+
+В каталоге `backend/nest-app/src/modules/wallet` находится пример реализации кошелькового сервиса на NestJS с TypeORM. Он демонстрирует:
+
+- работу с несколькими балансами пользователя;
+- идемпотентные транзакции с блокировкой записей;
+- публикацию событий в Kafka для аналитики и обновления баланса на фронтенде.
+
+## План разработки
+
+1.  **Фаза 1 (1–2 месяца)**: Реализация ядра аутентификации, кошелька, а также первоначальная интеграция с игровым провайдером и платежным шлюзом.
+2.  **Фаза 2 (2–3 месяца)**: Создание конвейера отчетности, настройка ETL в ClickHouse и разработка инструментов для администраторов.
+3.  **Фаза 3 (4–6 месяцев)**: Укрепление инфраструктуры, настройка наблюдаемости (observability), улучшение систем противодействия мошенничеству и масштабирование для поддержки нескольких провайдеров.
+4.  **Дальнейшие шаги**: Настройка инфраструктуры (Docker Compose для локальной среды, Helm/ArgoCD для продакшена), подключение мониторинга и системы оповещений, написание тестов и настройка CI/CD пайплайна.
+
+  
