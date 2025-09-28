@@ -166,6 +166,7 @@ code Code
 - **Developer onboarding**: Setup scripts, Docker Compose instructions.
 - **Runbooks & ops guides**: Incident response, deployment playbooks.
 - **Compliance & RG manuals**: KYC checklists, audit evidence collection.
+- **User-facing guides**: registration, deposits/withdrawals, gameplay tips, report consumption.
 
 ## 10. CI/CD Reference Pipeline (GitHub Actions)
 
@@ -213,6 +214,8 @@ jobs:
     Change management: Trunk-based development, progressive delivery via canaries, and rollback playbooks.
 
     Security reviews: Threat modeling, dependency scanning, and incident response exercises.
+
+    Stakeholder communication: Release notes distributed to compliance, operations, and VIP support teams with links to updated runbooks and KPIs.
 
 13. Open Questions & Next Steps
 
