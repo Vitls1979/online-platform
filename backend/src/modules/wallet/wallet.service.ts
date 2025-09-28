@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, QueryRunner } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import Decimal from 'decimal.js';
 import { Wallet } from './wallet.entity';
 import { Transaction } from './wallet-transaction.entity';
+import { WalletBalanceLog } from './wallet-balance-log.entity';
 import { PaymentGatewayClient } from '../../shared/payment-gateway.client';
 
 export enum TransactionType {
@@ -22,11 +24,11 @@ export enum TransactionStatus {
 
 export interface CreateTransactionInput {
   userId: string;
-  amount: number;
+  amount: string;
   currency: string;
   type: TransactionType;
   metadata?: Record<string, unknown>;
-  sourceTransactionId?: string;
+  sourceTransactionId?: string | null;
 }
 
 @Injectable()
@@ -38,6 +40,8 @@ export class WalletService {
     private readonly walletRepository: Repository<Wallet>,
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
+    @InjectRepository(WalletBalanceLog)
+    private readonly walletBalanceLogRepository: Repository<WalletBalanceLog>,
     private readonly dataSource: DataSource,
     private readonly paymentGateway: PaymentGatewayClient,
     private readonly eventEmitter: EventEmitter2,
@@ -50,37 +54,37 @@ export class WalletService {
 
     if (!wallet) {
       return {
-        available: 0,
-        bonus: 0,
-        locked: 0,
+        available: '0.00',
+        bonus: '0.00',
+        locked: '0.00',
       };
     }
 
     return {
-      available: Number(wallet.availableBalance),
-      bonus: Number(wallet.bonusBalance),
-      locked: Number(wallet.lockedBalance),
+      available: wallet.availableBalance,
+      bonus: wallet.bonusBalance,
+      locked: wallet.lockedBalance,
     };
   }
 
   async createDepositIntent(input: CreateTransactionInput) {
     const { userId, amount, currency } = input;
+    const normalizedAmount = new Decimal(amount).toFixed(2);
     this.logger.log(`Creating deposit intent for user ${userId}`);
 
     const intent = await this.paymentGateway.createDepositIntent({
       userId,
-      amount,
+      amount: normalizedAmount,
       currency,
       metadata: input.metadata,
     });
 
-    const { sourceTransactionId, ...transactionData } = input;
-
     const transaction = this.transactionRepository.create({
-      ...transactionData,
-      sourceTransactionId,
+      ...input,
+      amount: normalizedAmount,
       status: TransactionStatus.PENDING,
       externalId: intent.id,
+      sourceTransactionId: input.sourceTransactionId ?? null,
     });
 
     await this.transactionRepository.save(transaction);
@@ -130,15 +134,19 @@ export class WalletService {
       await runner.manager.save(transaction);
 
       const wallet = await this.getOrCreateWallet(runner, transaction.userId, transaction.currency);
-      wallet.availableBalance = Number(wallet.availableBalance) + Number(transaction.amount);
+      wallet.availableBalance = new Decimal(wallet.availableBalance)
+        .plus(new Decimal(transaction.amount))
+        .toFixed(2);
       await runner.manager.save(wallet);
 
-      await runner.manager.insert('wallet_balance_log', {
+      const walletBalanceLogRepository =
+        runner.manager.getRepository(WalletBalanceLog);
+      const balanceLog = this.walletBalanceLogRepository.create({
         walletId: wallet.id,
         transactionId: transaction.id,
         balanceAfter: wallet.availableBalance,
-        createdAt: new Date(),
       });
+      await walletBalanceLogRepository.save(balanceLog);
 
       this.eventEmitter.emit('wallet.balance.updated', {
         userId: wallet.userId,
@@ -174,32 +182,39 @@ export class WalletService {
     return transaction;
   }
 
-  async reserveBetAmount(userId: string, currency: string, amount: number) {
+  async reserveBetAmount(userId: string, currency: string, amount: string) {
     return this.withTransaction(async (runner) => {
       const wallet = await this.getOrCreateWallet(runner, userId, currency, true);
-      if (wallet.availableBalance < amount) {
+      const availableBalance = new Decimal(wallet.availableBalance);
+      const betAmount = new Decimal(amount);
+
+      if (availableBalance.lessThan(betAmount)) {
         throw new Error('Insufficient funds');
       }
 
-      wallet.availableBalance -= amount;
-      wallet.lockedBalance += amount;
+      wallet.availableBalance = availableBalance.minus(betAmount).toFixed(2);
+      wallet.lockedBalance = new Decimal(wallet.lockedBalance).plus(betAmount).toFixed(2);
       await runner.manager.save(wallet);
 
       return wallet;
     });
   }
 
-  async settleBet(userId: string, currency: string, amount: number, winAmount: number) {
+  async settleBet(userId: string, currency: string, amount: string, winAmount: string) {
     return this.withTransaction(async (runner) => {
       const wallet = await this.getOrCreateWallet(runner, userId, currency, true);
-      wallet.lockedBalance -= amount;
-      wallet.availableBalance += winAmount;
+      const betAmount = new Decimal(amount);
+      const win = new Decimal(winAmount);
+      const normalizedWinAmount = win.toFixed(2);
+
+      wallet.lockedBalance = new Decimal(wallet.lockedBalance).minus(betAmount).toFixed(2);
+      wallet.availableBalance = new Decimal(wallet.availableBalance).plus(win).toFixed(2);
       await runner.manager.save(wallet);
 
       this.eventEmitter.emit('wallet.bet.settled', {
         userId,
         currency,
-        winAmount,
+        winAmount: normalizedWinAmount,
       });
 
       return wallet;
@@ -240,9 +255,9 @@ export class WalletService {
       wallet = walletRepo.create({
         userId,
         currency,
-        availableBalance: 0,
-        bonusBalance: 0,
-        lockedBalance: 0,
+        availableBalance: '0.00',
+        bonusBalance: '0.00',
+        lockedBalance: '0.00',
       });
       await walletRepo.save(wallet);
     }

@@ -23,7 +23,8 @@ export class Transaction {
     scale: 2,
     transformer: currencyColumnTransformer,
   })
-  amount!: number;
+  /** Stored as a string to avoid precision loss for large transaction amounts. */
+  amount!: string;
 
   @Column({ type: 'enum', enum: TransactionType })
   type!: TransactionType;
@@ -38,7 +39,7 @@ export class Transaction {
   externalId?: string;
 
   @Column({ type: 'varchar', length: 128, nullable: true })
-  sourceTransactionId?: string;
+  sourceTransactionId?: string | null;
 
   @Column({ nullable: true })
   failureReason?: string;

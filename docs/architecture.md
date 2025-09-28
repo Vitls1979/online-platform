@@ -1,176 +1,174 @@
-# Онлайн-платформа азартных игр: архитектура и план разработки
+    
+# Online Gaming Platform Architecture & Delivery Plan
 
-## 1. Общее видение
+## 1. Product Vision & Goals
 
-Платформа предназначена для организации полного цикла взаимодействия игрока с игровыми провайдерами: от регистрации через Telegram и email (2FA) до проведения платежей, получения бонусов и построения отчетов. Архитектура построена по модульному принципу, что позволяет масштабировать систему, расширять интеграции и изменять бизнес-логику без переписывания всего кода.
+The platform delivers a regulated online gambling experience where players can register through Telegram and email, deposit or withdraw funds, launch games from multiple providers, and receive personalized insights. The architecture favors modularity so that new jurisdictions, payment options, and content providers can be introduced without reworking the entire codebase.
 
-Основные качества платформы:
+**Primary business and technical goals**
 
-- **Масштабируемость**: разбиение на отдельные сервисы и использование брокера сообщений для асинхронных операций.
-- **Надежность и устойчивость**: мониторинг и централизованное логирование, продуманная система резервного копирования.
-- **Безопасность**: многофакторная аутентификация, управление сессиями в Redis, соблюдение требований KYC/RG.
-- **Гибкость**: модульная структура и возможность расширения через внедрение новых провайдеров, платежных шлюзов и аналитических сценариев.
+- **Acquisition & retention**: smooth onboarding with Telegram SSO and email-based 2FA, a responsive web app, and real-time engagement features.
+- **Regulatory compliance**: auditable player lifecycle, responsible gaming tooling, and segregated wallet accounting.
+- **Operational excellence**: centralized observability, infrastructure-as-code, progressive delivery with canary automation, CI/CD automation to reduce release risk, and error-budget-driven release cadences to maintain velocity.
+- **Scalability & resilience**: microservice-ready backend with asynchronous messaging, horizontal scaling, clearly defined domain boundaries, automated failover playbooks, and active-active disaster recovery options.
 
-## 2. Технологический стек
+> **Сводка на русском языке.** Платформа покрывает полный цикл работы игрока — от регистрации через Telegram и email (2FA) до проведения платежей, начисления бонусов и построения отчетов. Архитектура строится модульно, чтобы можно было масштабировать систему, подключать новых провайдеров и платежные сервисы без переписывания ядра.
+>
+> - **Масштабируемость**: разбиение на независимые сервисы, использование брокера сообщений для асинхронных операций.
+> - **Надежность и устойчивость**: централизованный мониторинг и логирование, продуманное резервное копирование.
+> - **Безопасность**: многофакторная аутентификация, управление сессиями в Redis, соблюдение KYC/RG требований.
+> - **Гибкость**: модульная структура и возможность быстро внедрять новых провайдеров, платежные шлюзы и сценарии аналитики.
 
-### 2.1 Frontend
+### 1.1 Architecture Principles
 
-- **Next.js (React + TypeScript)** — основа клиентского приложения.
-- **Tailwind CSS** + **shadcn/ui** — дизайн-система и готовые компоненты.
-- **React Query** — работа с данными и управление кэшированием API-запросов.
-- **WebSocket (через GraphQL subscriptions или Socket.IO)** — онлайн-обновления баланса, состояний игр, оповещений.
+- **Modularity first**: each bounded context can scale and be deployed independently without rewriting shared contracts.
+- **Security by default**: secrets management, least-privilege IAM, and encrypted transport/storage are considered table stakes rather than add-ons.
+- **API-first collaboration**: REST and event schemas are versioned artifacts so providers and internal teams can iterate without regressions.
+- **Ops automation**: infrastructure, data retention, and compliance evidence capture are automated through pipelines to avoid manual drift.
 
-### 2.2 Backend
+## 2. Target Audiences & Journeys
 
-- **NestJS (TypeScript)** — основной фреймворк для микросервисов и BFF.
-- **API Gateway / BFF** — единственная точка входа для фронтенда.
-- **PostgreSQL** — транзакционная база данных (пользователи, транзакции, настройки).
-- **Redis** — кеш, сессии, rate limiting, временные данные.
-- **ClickHouse** — аналитика, хранение исторических данных.
-- **Kafka или NATS** — асинхронные события, вебхуки, интеграции.
-- **OpenTelemetry + Prometheus + Grafana** — наблюдаемость, метрики, трассировки.
-- **Keycloak/Custom Auth** (опционально) — централизованное управление пользователями и 2FA.
+| Persona | Needs | Key Journeys |
+| --- | --- | --- |
+| Player | Quick registration, trusted payments, transparent history | Register with Telegram & email → verify identity → deposit → launch games → track transactions → request withdrawal |
+| Compliance officer | Reliable records, RG controls | Review KYC status → adjust limits → audit wallet transactions |
+| Operations/admin | Catalog management, manual interventions | Manage games and providers → process payouts → issue manual bonuses |
+| Analyst | Detailed reporting, ad-hoc insights | Configure ClickHouse reports → schedule exports → analyze player cohorts |
 
-### 2.3 Интеграции
+## 3. System Architecture Overview
 
-- **Платежный шлюз** (Stripe, PayPal или локальные эквайринги) — операции депозита и вывода.
-- **Игровые провайдеры** (через API, SSO, callback-эндпоинты) — запуск игр, ставки, выплаты.
-- **Telegram Bot API** — авторизация и уведомления.
-- **Email/SMS провайдеры** — подтверждение email, 2FA, RG оповещения.
+  
 
-## 3. Высокоуровневая архитектура
+Client (Next.js) ──▶ API Gateway (NestJS BFF)
+│
+├─▶ Domain Modules (Auth, User, Wallet, Game, Report, Admin,
+│ Notification, Monitoring)
+│
+├─▶ Integration Services ──▶ Game Providers / Payment Gateways
+│
+├─▶ PostgreSQL (transactions, identities)
+│
+├─▶ Redis (sessions, cache)
+│
+├─▶ Kafka / NATS (events, webhooks) ──▶ Worker Services
+│
+└─▶ ClickHouse (analytics) ──▶ Reporting & BI
+code Code
 
-```
-Client (Next.js) -> API Gateway (NestJS) -> Модули домена -> Сервисы интеграций
-                                              |                  |
-                                              v                  v
-                                           PostgreSQL          Провайдеры игр
-                                              |
-                                              v
-                                           Kafka/NATS -> асинхронные задачи -> Worker-сервисы
-                                              |
-                                              v
-                                          ClickHouse (ETL)
-                                              |
-                                              v
-                                         Отчеты и аналитика
-```
+    
+### 3.1 Frontend
 
-### 3.1 Модульная структура Backend
+- **Framework**: Next.js (App Router) with React 18 and TypeScript.
+- **Styling**: TailwindCSS, shadcn/ui component library, Radix primitives for accessibility.
+- **State Management**: React Query for data fetching and client-side caching.
+- **Real-time updates**: WebSocket / GraphQL subscriptions or Socket.IO to surface live balance updates, gameplay status, and alerts.
+- **Testing**: Playwright for E2E, Vitest/React Testing Library for unit/integration tests.
 
-- **Auth Module**: регистрация через Telegram, email 2FA, управление JWT/refresh токенами, RG ограничения.
-- **User Module**: профили, KYC статусы, лимиты, настройки уведомлений.
-- **Wallet Module**: кошельки, балансы, транзакции, интеграция с платежной системой.
-- **Game Module**: каталог игр, запуск сессий, прием колбеков, учет ставок/выигрышей.
-- **Report Module**: генерация отчетов, фильтры, построение запросов к ClickHouse.
-- **Admin Module**: CRUD по пользователям, играм, платежам, ручные операции.
-- **Notification Module**: рассылки, уведомления о критичных событиях (Telegram/email/SMS).
-- **Monitoring Module**: экспорт метрик, health-checkи, алерты.
+> **Локализация (Frontend, RU).** Клиентское приложение собирается на Next.js (React + TypeScript), использует Tailwind CSS и shadcn/ui в качестве дизайн-системы. Для работы с данными применяется React Query, а живые обновления (баланс, состояние игр, оповещения) доставляются через WebSocket/GraphQL subscriptions или Socket.IO.
 
-Каждый модуль реализуется в виде отдельного пакета NestJS и может разворачиваться как отдельный микросервис при необходимости масштабирования.
+### 3.2 Backend & Domain Services
 
-### 3.2 Инфраструктура и деплой
+- **Framework**: NestJS (TypeScript) to implement an API Gateway / BFF and modular microservices.
+- **API Layer**: GraphQL (Apollo Server) for flexible querying and subscriptions. REST endpoints exposed where required by providers or payment webhooks.
+- **Database Access**: TypeORM for PostgreSQL; custom repositories for ClickHouse via `@clickhouse/client`.
+- **Messaging**: Kafka or NATS for async workflows (payment notifications, game events, ETL triggers).
+- **Monitoring**: OpenTelemetry instrumentation with exporters to Prometheus; structured logging (pino).
 
-- **Docker Compose** — локальная разработка: сервисы приложений, PostgreSQL, Redis, ClickHouse, Kafka, MinIO (для хранения файлов, если нужно).
-- **Kubernetes** — продакшн: Helm charts, auto-scaling, rolling обновления.
-- **CI/CD** — GitHub Actions/GitLab CI: линтеры, тесты, билд, деплой.
-- **Secrets Management** — HashiCorp Vault или Kubernetes Secrets.
+| Module | Responsibilities | Integrations |
+| --- | --- | --- |
+| **AuthModule** | Telegram OAuth callback, email verification, password/2FA management. | Redis, PostgreSQL, NotificationService. |
+| **UserModule** | Profile management, KYC status, RG limits. | PostgreSQL, AdminModule. |
+| **WalletModule** | Ledger management, balance projections, transaction workflows. | PostgreSQL, PaymentService, GameService. |
+| **GameModule** | Game catalog, provider adapters, bet/win processing. | Provider APIs, Event Bus, WalletModule. |
+| **PaymentModule** | Payment intent lifecycle, webhook handling, AML checks. | Payment Gateway API, Kafka/NATS. |
+| **ReportModule** | Report templating, ClickHouse queries, exports. | ClickHouse, ETL jobs. |
+| **AdminModule** | Backoffice APIs, audit logs, provider management. | All core modules, NotificationService. |
+| **NotificationModule** | Outbound messaging via Telegram, email, and SMS providers. | External APIs (Telegram, SendGrid, etc.) |
+| **Worker Services**| Asynchronous processing of payments, ETL, and notifications. | Kafka/NATS |
 
-## 4. Доменная модель
+> **Локализация (Backend, RU).** Backend строится на NestJS: BFF/API Gateway обслуживает фронтенд и маршрутизирует запросы к доменным сервисам. Auth Module обрабатывает регистрацию через Telegram, email и JWT/refresh токены; User Module управляет профилями, статусами KYC и лимитами; Wallet Module ведет кошельки и интеграции с платежами; Game Module управляет каталогом, сессиями и колбэками провайдера; Report Module формирует отчеты и взаимодействует с ClickHouse; Admin Module обеспечивает административный CRUD; Notification Module отвечает за рассылки. Рабочие сервисы подписаны на Kafka/NATS для фоновых задач.
 
-### 4.1 Пользователи
+### 3.3 Data & Storage Strategy
 
-- `User`: id, telegramId, email, phone, status, kycStatus, rgFlags, createdAt.
-- `UserSettings`: userId, notificationPreferences, securitySettings (2FA, trustedDevices).
-- `Session`: userId, refreshToken, expiresAt, deviceInfo.
+- **PostgreSQL** for transactional data (accounts, wallets, transactions, configurations).
+- **Redis** for session storage, caching, rate limiting, and transient gameplay data.
+- **ClickHouse** for high-volume analytical workloads, ETL aggregates, and long-term history.
+- **Object storage (MinIO/S3)** for report exports and large attachments.
+- **Backup & retention** policies applied per store; PITR for PostgreSQL, snapshotting for ClickHouse, and multi-region replication for object storage when required.
 
-### 4.2 Балансы и транзакции
+> **Локализация (Хранение данных, RU).** PostgreSQL используется для транзакционных данных. Redis хранит сессии, кеш и служит для rate limiting. ClickHouse — аналитическое хранилище. Объектное хранилище (MinIO/S3) собирает выгрузки. Для каждой базы определены политики бэкапов.
 
-- `Wallet`: userId, currency, availableBalance, bonusBalance, lockedBalance.
-- `Transaction`: id, userId, type (deposit/withdrawal/bet/win/bonus), amount, currency, status, referenceId, sourceTransactionId.
-- `Payment`: id, userId, gateway, amount, status, metadata, kycRequired.
+### 3.4 Integrations & External Systems
 
-### 4.3 Игры
+- **Payment gateways** (Stripe, PayPal, or local acquirers) for deposits and withdrawals.
+- **Game providers** via APIs, SSO launch URLs, and callback endpoints.
+- **Telegram Bot API** for authentication and high-priority notifications.
+- **Email/SMS providers** for confirmations, 2FA, and responsible gaming alerts.
+- **Compliance/KYC vendors** (optional) for document verification and AML screening.
 
-- `Game`: id, providerId, name, category, volatility, launchUrl, currencies.
-- `GameSession`: id, userId, gameId, providerSessionId, status, startedAt, endedAt.
-- `Bet`: id, gameSessionId, amount, currency, outcome, winAmount.
+## 4. Key Data Flows
 
-### 4.4 Отчеты и аналитика
+1. **Registration & Authentication**: Player initiates signup via Telegram Bot -> BFF enforces Email confirmation and 2FA -> Identity data persists in PostgreSQL; session state is stored in Redis.
+2. **Gameplay Loop**: Player browses game catalog (with Redis caching) -> BFF requests a launch session from Game Service -> Provider callbacks with bet outcomes publish events to Kafka/NATS -> Wallet Service consumes events, updates balances in PostgreSQL -> ETL jobs stream data into ClickHouse.
+3. **Payments**: Deposit via BFF -> Payment Service creates intent -> Gateway webhook publishes to Kafka/NATS -> Wallet Service finalizes transaction. Withdrawal includes KYC/RG checks.
+4. **Reporting & Analytics**: Analyst configures filters -> Report Module generates ClickHouse SQL -> Report is stored in object storage -> Stakeholders are notified.
 
-- `ReportTemplate`: id, userId/adminId, filters, metrics, schedule.
-- `ReportJob`: id, templateId, status, generatedAt, storageLocation.
-- ETL таблицы в ClickHouse: `transactions_log`, `bets_log`, `payments_log`, `user_activity`.
+## 5. Domain Model Highlights
 
-## 5. Потоки данных
+- **Users & Sessions**: `User`, `UserSettings`, `Session`.
+- **Wallets & Transactions**: `Wallet`, `Transaction`, `Payment`.
+- **Games & Bets**: `Game`, `GameSession`, `Bet`.
+- **Reporting**: `ReportTemplate`, `ReportJob`, and ClickHouse tables like `transactions_log`, `bets_log`, `user_activity`.
 
-1. **Регистрация и аутентификация**:
-   1. Пользователь инициирует регистрацию через Telegram Bot → передается auth data в BFF.
-   2. Пользователь подтверждает email, генерируется TOTP для 2FA.
-   3. Данные пользователя и статусы KYC сохраняются в PostgreSQL, сессия — в Redis.
+## 6. Security, Compliance & Responsible Gaming
 
-2. **Игровой процесс**:
-   1. Пользователь выбирает игру из каталога (данные из Game Module + кеш Redis).
-   2. API Gateway вызывает Game Service → интеграция с провайдером → получение launch URL/SSO токена.
-   3. Ставки/выигрыши от провайдера приходят в callback → Game Service валидирует → публикует события в Kafka.
-   4. Wallet Service подписывается на события и обновляет балансы, пишет транзакции в PostgreSQL.
-   5. ETL процесс периодически синхронизирует данные в ClickHouse.
+- Multi-factor authentication (Telegram auth + email verification + optional TOTP/SMS).
+- RBAC with clear separation between players, support, admins, and analysts.
+- Responsible Gaming controls: deposit/time limits, self-exclusion, age verification.
+- Administrative action logging and immutable audit trails.
+- Session management with Redis, JWT rotation, and device fingerprinting.
+- WAF, rate limiting, bot detection, and DDoS mitigation at the edge.
+- Data encryption at rest and in transit (TLS everywhere).
 
-3. **Платежи**:
-   1. Депозит: клиент → BFF → PaymentService → создается payment intent → редирект/iframe провайдера.
-   2. Вебхук от платежной системы → Kafka → Wallet Service обновляет транзакцию и баланс.
-   3. Вывод: проверка KYC и лимитов → создание payout запроса → статус обновляется по вебхуку.
+## 7. Observability & Operations
 
-4. **Отчеты**:
-   1. Пользователь в UI собирает фильтры → запрос в Report Module.
-   2. Report Module строит SQL для ClickHouse, формирует материализованный отчет, сохраняет в S3/MinIO.
-   3. Уведомление пользователю с ссылкой на скачивание (CSV/Excel/JSON).
+- **OpenTelemetry** for distributed tracing.
+- **Prometheus + Grafana** for metrics and dashboards (request throughput, latency, error budgets, Kafka topic lag).
+- **ELK/EFK** stack for centralized structured logging.
+- **Alertmanager** (Telegram/email channels) for operational and compliance alerts.
 
-## 6. Безопасность и RG
+## 8. Delivery Roadmap
 
-- Telegram auth + email подтверждение + 2FA (TOTP/SMS).
-- RBAC и разделение ролей (игрок, саппорт, администратор, аналитик).
-- Responsible Gaming: лимиты депозитов, времени игры, самоисключение, проверка возраста.
-- Логирование действий администраторов.
-- Web Application Firewall (WAF), rate limiting, защита от DDoS.
+### Phase 0 – Foundations (Weeks 0–2)
+- Establish monorepo structure, CI/CD skeleton, and local Docker Compose environment.
+- Implement Auth + User modules with Telegram and email flows.
+- Stand up PostgreSQL, Redis, and observability baseline.
 
-## 7. Мониторинг и наблюдаемость
+### Phase 1 – Core Experience (Weeks 3–8)
+- Deliver Wallet module with string-safe currency handling and payment gateway integration.
+- Launch catalog UI with real-time balance updates and a first game provider integration.
+- Provide transaction history, bonus balance display, and responsible gaming settings.
 
-- **OpenTelemetry**: трассировка запросов (frontend → backend → провайдеры).
-- **Prometheus + Grafana**: метрики (RPS, latency, ошибки, баланс Kafka topics).
-- **ELK/EFK Stack**: централизованные логи (ElasticSearch/Fluentd/Kibana).
-- **Alertmanager**: оповещения о критичных событиях (Telegram, Email).
+### Phase 2 – Analytics & Operations (Weeks 9–16)
+- Build ETL pipelines to ClickHouse and the Report module with scheduling.
+- Release admin console for provider/payment management and manual adjustments.
+- Expand RG tooling, add AML screening hooks, and enable multi-currency support.
 
-## 8. План разработки и релизов
+### Phase 3 – Production Hardening (Weeks 17–24)
+- Containerize services, introduce Kubernetes deployments, auto-scaling, and blue/green releases.
+- Extend monitoring coverage, integrate antifraud scoring, and onboard additional providers.
+- Implement disaster recovery drills and cross-region replication where applicable.
 
-### Этап 1 (1–2 месяца)
+## 9. Documentation Plan
 
-- Реализация базового BFF, Auth, User, Wallet модулей.
-- Интеграция с Telegram Bot и почтовым сервисом для регистрации.
-- Подключение одного игрового провайдера и платежного шлюза.
-- UI: личный кабинет, баланс, история транзакций, избранные игры.
+- **API documentation**: OpenAPI/Swagger for REST endpoints and GraphQL schema references.
+- **Database schema**: ER diagrams and migration history.
+- **Developer onboarding**: Setup scripts, Docker Compose instructions.
+- **Runbooks & ops guides**: Incident response, deployment playbooks.
+- **Compliance & RG manuals**: KYC checklists, audit evidence collection.
+- **User-facing guides**: registration, deposits/withdrawals, gameplay tips, report consumption.
 
-### Этап 2 (2–3 месяца)
-
-- Конструктор отчетов, ETL пайплайны, ClickHouse интеграция.
-- Admin-панель: управление пользователями, провайдерами, платежами.
-- Реализация RG функционала и лимитов.
-
-### Этап 3 (4–6 месяцев)
-
-- Контейнеризация, оркестрация в Kubernetes, auto-scaling.
-- Расширение мониторинга, антифрод-сервис, дополнительная аналитика.
-- Подключение новых провайдеров и валют.
-
-## 9. Документация
-
-- **API**: OpenAPI/Swagger для REST, GraphQL schema docs.
-- **DB Schema**: схемы и миграции (Prisma/MikroORM/TypeORM).
-- **Dev Onboarding**: инструкции по запуску docker-compose, запуск тестов, интеграционных сценариев.
-- **CI/CD**: пайплайн, ветвление, code review.
-- **Пользовательские гайды**: инструкции по регистрации, депозитам, играм, отчетам, ограничениям.
-
-## 10. Пример CICD пайплайна (GitHub Actions)
+## 10. CI/CD Reference Pipeline (GitHub Actions)
 
 ```yaml
 name: ci
@@ -196,14 +194,35 @@ jobs:
       - run: npm install --legacy-peer-deps
       - run: npm run lint
       - run: npm run test
-```
 
-## 11. Дальнейшие шаги
+  
 
-1. Подготовить детальные спецификации API для каждого модуля.
-2. Описать контракты интеграции с игровыми провайдерами и платежными системами.
-3. Настроить окружение разработки (docker-compose, seed данные).
-4. Разработать дизайн-систему и UI-kit на базе shadcn/ui и Tailwind.
-5. Согласовать требования по безопасности и соответствию регуляциям.
+11. Deployment Environments
 
-Документ служит стартовой точкой для проектирования и разработки платформы. Он может дополняться диаграммами последовательностей, ER-диаграммами и конкретными техническими спецификациями по мере проработки отдельных модулей.
+    Local & CI: Docker Compose for PostgreSQL, Redis, ClickHouse, and mock services.
+
+    Staging: Managed database instances with feature-flags and anonymized telemetry.
+
+    Production: Multi-AZ Kubernetes clusters with blue/green rollouts and automated migrations.
+
+    Disaster recovery: Warm standby region with asynchronous replication and quarterly failover drills.
+
+12. Quality & Release Governance
+
+    Automated testing: Contract tests, end-to-end flows, and load tests.
+
+    Change management: Trunk-based development, progressive delivery via canaries, and rollback playbooks.
+
+    Security reviews: Threat modeling, dependency scanning, and incident response exercises.
+
+    Stakeholder communication: Release notes distributed to compliance, operations, and VIP support teams with links to updated runbooks and KPIs.
+
+13. Open Questions & Next Steps
+
+    Prioritize which additional payment gateways to onboard for launch geography coverage.
+
+    Finalize provider certification requirements and mapping of jurisdictional compliance documents.
+
+    Define SLAs for external integrations (KYC, payment gateways) and document contingency flows.
+
+    Confirm analytics retention policy alignment between ClickHouse and long-term cold storage.
