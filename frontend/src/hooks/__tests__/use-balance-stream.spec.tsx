@@ -134,4 +134,40 @@ describe('useBalanceStream', () => {
       vi.useRealTimers();
     }
   });
+
+  it('recovers connection state after browser-managed retry', () => {
+    vi.useFakeTimers();
+
+    try {
+      const { result, unmount } = renderHook(() =>
+        useBalanceStream<{ balance: number }>({ url: '/stream' }),
+      );
+
+      const source = MockEventSource.instances[0];
+      expect(source).toBeDefined();
+
+      act(() => {
+        source.emitOpen();
+      });
+
+      expect(result.current.status).toBe('active');
+
+      act(() => {
+        source.emitError(MockEventSource.CONNECTING);
+      });
+
+      expect(result.current.status).toBe('connecting');
+      expect(source.close).not.toHaveBeenCalled();
+
+      act(() => {
+        source.emitOpen();
+      });
+
+      expect(result.current.status).toBe('active');
+
+      unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
