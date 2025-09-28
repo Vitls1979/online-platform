@@ -90,7 +90,6 @@ export const useBalanceStream = <TMessage = unknown>(
           return;
         }
 
-        cleanupSource();
         connect();
       }, 1000);
     };
@@ -100,6 +99,7 @@ export const useBalanceStream = <TMessage = unknown>(
         return;
       }
 
+      cleanupSource();
       setStatus('connecting');
 
       const nextSource = new EventSource(url, { withCredentials });
