@@ -19,22 +19,21 @@ type TransactionsData = {
   transactions: Transaction[];
 };
 
-function getVisibleTransactions(data: TransactionsData): Transaction[] {
-  return data.transactions.slice(0, MAX_VISIBLE_TRANSACTIONS);
-}
-
 export function mapVisibleTransactionsToRows(
   data: TransactionsData,
 ): TransactionRow[] {
-  const visibleTransactions = getVisibleTransactions(data);
+  const visibleTransactions = data.transactions.slice(
+    0,
+    MAX_VISIBLE_TRANSACTIONS,
+  );
+  const visibleTransactionsLength = visibleTransactions.length;
 
   return visibleTransactions.map((transaction, index) => ({
     transaction,
-    showSeparator: index < visibleTransactions.length - 1,
+    showSeparator: index < visibleTransactionsLength - 1,
   }));
 }
 
 export const __testables__ = {
-  getVisibleTransactions,
   MAX_VISIBLE_TRANSACTIONS,
 };
